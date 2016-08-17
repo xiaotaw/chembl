@@ -1,0 +1,6 @@
+{
+  "name": "Protein kinase",
+  "tagline": "To build a DNN model for protein kinase target compound virtual screening",
+  "body": "# Author: xiaotaw@qq.com (Any bug report is welcome)\r\n# Time: Aug 2016\r\n# Addr: Shenzhen\r\n# Description: This is a dnn model for protein kinase(pk). \r\n",
+  "note": "Don't delete this file! It's used internally to help with page regeneration."
+}
