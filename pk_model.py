@@ -54,8 +54,7 @@ def branch(branch_name, base_layer, wd=0.004, keep_prob=0.8,
 
 def x_entropy(softmax, labels, loss_name):
   with tf.name_scope(loss_name):
-    cross_entropy = tf.reduce_mean(-tf.reduce_sum(labels * tf.log(softmax), 
-      reduction_indices=[1]), name="x_entropy")
+    cross_entropy = -tf.reduce_sum(tf.reduce_mean(labels * tf.log(softmax), reduction_indices=[0]), name="x_entropy")
     return cross_entropy
 
 def accuracy(softmax, labels, accuracy_name):
