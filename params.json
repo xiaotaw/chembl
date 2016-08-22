@@ -1,6 +1,6 @@
 {
   "name": "Protein kinase",
   "tagline": "To build a DNN model for protein kinase target compound virtual screening",
-  "body": "# Author: xiaotaw@qq.com (Any bug report is welcome)\r\n# Time: Aug 2016\r\n# Addr: Shenzhen\r\n# Description: This is a dnn model for protein kinase(pk). \r\n",
+  "body": "# Abstract\r\nAuthor: xiaotaw@qq.com (Any bug report is welcome)\r\nTime: Aug 2016\r\nAddr: Shenzhen\r\nDescription: This is a deep neural network model, which predicts potential drugs for protein kinase targets. \r\nWebsite: https://xiaotaw.github.io/protein_kinase/\r\n\r\n\r\n# Background\r\n  (add background for using DNN to build this qsar model)\r\n\r\n# Problem\r\n  (add one sentence abstract for current challenge)\r\n\r\n# Solution\r\n  (how we solve the problem)\r\n\r\n# Method\r\n## 1 get data\r\n     1.1 positive dataset was downloaded from chembl database\r\n     1.2 negtive dataset was selected from pubchem database(based on a reasonable assumption that almost the compound in pubchem was NOT the substrate of a protein kinase)\r\n\r\n## 2 build the model\r\n     2.1 deep neural network was used(based on tensorflow)\r\n     2.2 a 'Tree' comprises one 'Term' and several 'Branches', where the 'Term' extracts the mutual figures of all the protein kinase.\r\n\r\n## 3 train and evaluation\r\n     3.1 we train the model jointly and apply the model on pubchem dataset for virtual screening.\r\n \r\n\r\n",
   "note": "Don't delete this file! It's used internally to help with page regeneration."
 }
