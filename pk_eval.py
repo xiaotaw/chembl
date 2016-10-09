@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Author: xiaotaw@qq.com (Any bug report is welcome)
 # Time: Aug 2016
 # Addr: Shenzhen
@@ -7,108 +8,125 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import glob
+import os
+import time
 import numpy
+import datetime
 import tensorflow as tf
 import pk_model
+import pk_input
 
-def evaluate(dataset_dict, neg_dataset, target_list, out_filename,
-             ckpt_dir = "/tmp/train"):
-  """ evaluate the model """
+def evaluate(target_list):
+  """ evaluate the model 
+  """
+  # virtual screen log file
+  log_dir = "log_files"
+  logpath = os.path.join(log_dir, "pk_eval.log")
+  logfile = open(logpath, "w")
+  logfile.write("pk_eval starts at: %s\n" % datetime.datetime.now())
 
-  outfile = open(out_filename,'w')
+  # get input dataset
+  train_dataset_dict = dict()
+  test_dataset_dict = dict()
+  for target in target_list:
+    train_dataset_dict[target] = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_train.pkl") 
+    test_dataset_dict[target] = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_test.pkl") 
+
+  neg_dataset = pk_input.get_inputs_by_cpickle("data_files/pkl_files/pubchem_neg_sample.pkl")
   
-  with tf.Graph().as_default():
+
+
+  with tf.Graph().as_default(), tf.device("/gpu:0"):
     
-    input_placeholder = tf.placeholder(tf.float32, shape = (None, 2048))
+    # build the model
+    input_placeholder = tf.placeholder(tf.float32, shape = (None, 8192))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
-
-    global_step = tf.Variable(0, trainable=False)
-
-    """
-    start_learning_rate = 0.1
-    decay_step = 16000
-    decay_rate = 0.7
-    learning_rate = tf.train.exponential_decay(start_learning_rate, global_step, decay_step, decay_rate)
-    """
-
-    # build a Graph that computes the softmax predictions from the
-    # inference model.
+    # build the "Tree" with a mutual "Term" and several "Branches"
     base = pk_model.term(input_placeholder, keep_prob=1.0)
-
     softmax_dict = dict()
+    wd_loss_dict = dict()
+    x_entropy_dict = dict()
     loss_dict = dict()
     accuracy_dict = dict()
-
     for target in target_list:
       # compute softmax
       softmax_dict[target] = pk_model.branch(target, base, keep_prob=1.0)
+      # compute loss.
+      wd_loss_dict[target] = tf.add_n(tf.get_collection("term_wd_loss") + tf.get_collection(target+"_wd_loss"))
+      x_entropy_dict[target] = pk_model.x_entropy(softmax_dict[target], label_placeholder, target)
+      loss_dict[target]  = tf.add(wd_loss_dict[target], x_entropy_dict[target])
       # compute accuracy
       accuracy_dict[target] = pk_model.accuracy(softmax_dict[target], label_placeholder, target)
-
 
     # create a saver.
     saver = tf.train.Saver(tf.trainable_variables())
 
-    # Start running operations on the Graph.
-    with tf.Session() as sess:
-      """
-      # Restores variables from checkpoint
-      ckpt = tf.train.get_checkpoint_state(ckpt_dir)
-      if ckpt and ckpt.model_checkpoint_path:
-        # Restores from checkpoint
-        saver.restore(sess, ckpt.model_checkpoint_path)
-        # Assuming model_checkpoint_path looks something like:
-        #   /my-favorite-path/tmp/model.ckpt-0,
-        # extract global_step from it.
-        global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-      else:
-        print('No checkpoint file found')
-        return
-      """
-      file_list = glob.glob(ckpt_dir + '/model.ckpt-*')
-      ckpt_list = list()
-      for f in file_list:
-        global_step = int(f.split('/')[-1].split('-')[-1])
-        ckpt_list.append((global_step, f))
-      ckpt_list.sort(key = lambda ckpt: ckpt[0])
+    # create session.
+    config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+    config.gpu_options.per_process_gpu_memory_fraction = 0.5
+    sess = tf.Session(config=config)
+
+    # Restores variables from checkpoint
+    saver.restore(sess, "ckpt_files/model.ckpt-40000")
+
+    
+    
+    # eval train dataset
+    for target in target_list:
+      t0 = float(time.time())
+      compds = numpy.vstack([train_dataset_dict[target].compds, neg_dataset.compds])
+      labels = numpy.vstack([train_dataset_dict[target].labels, neg_dataset.labels])
+      t1 = float(time.time())
+      LV, XLV, ACC, prediction, label_dense = sess.run(
+        [wd_loss_dict[target], 
+         x_entropy_dict[target],
+         accuracy_dict[target], 
+         tf.argmax(softmax_dict[target], 1), 
+         tf.argmax(labels, 1)], 
+        feed_dict = {
+          input_placeholder: compds,
+          label_placeholder: labels,
+        }
+      )
+      t2 = time.time()
+      TP, TN, FP, FN, SEN, SPE, MCC = pk_model.compute_performance(label_dense, prediction)
+      format_str = "%6d %6d %6.3f %6.3f %10.3f %5d %5d %5d %5d %6.3f %6.3f %6.3f %6.3f %5.3f %5.3f %s"
+      logfile.write(format_str % (5000, 40000, LV, XLV, 0, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))
+      logfile.write('\n')
+      print(format_str % (5000, 40000, LV, XLV, 0, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))  
+
+    # eval test dataset
+    for target in target_list:  
+      t0 = float(time.time())
+      compds = test_dataset_dict[target].compds
+      labels = test_dataset_dict[target].labels
+      t1 = float(time.time())
+      LV, XLV, ACC, prediction, label_dense = sess.run(
+        [wd_loss_dict[target], 
+         x_entropy_dict[target],
+         accuracy_dict[target], 
+         tf.argmax(softmax_dict[target], 1), 
+         tf.argmax(labels, 1)], 
+        feed_dict = {
+          input_placeholder: compds,
+          label_placeholder: labels,
+        }
+      )
+      t2 = time.time()
+      TP, TN, FP, FN, SEN, SPE, MCC = pk_model.compute_performance(label_dense, prediction)
+      format_str = "%6d %6d %6.3f %6.3f %10.3f %5d %5d %5d %5d %6.3f %6.3f %6.3f %6.3f %5.3f %5.3f %s"
+      logfile.write(format_str % (5000, 40000, LV, XLV, 0, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))
+      logfile.write('\n')
+      print(format_str % (5000, 40000, LV, XLV, 0, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))  
+
+  logfile.close()
 
 
-      print("g_step    TP    FN    TN    FP    SEN    SPE    ACC    MCC")
-      # for each checkpoint file, restore the variables, and evaluate the model 
-      for i in range(0,len(ckpt_list)):
-        saver.restore(sess, ckpt_list[i][1])
-        global_step = ckpt_list[i][0]
-        for j in range(len(target_list)):
-          compds = numpy.vstack([dataset_dict[target_list[j]].compds, neg_dataset.compds])
-          labels = numpy.vstack([dataset_dict[target_list[j]].labels, neg_dataset.labels])
-          # evaluate the model
-          ACC, prediction, label_dense = sess.run(
-            [accuracy_dict[target_list[j]], tf.argmax(softmax_dict[target_list[j]], 1), tf.argmax(labels, 1)], 
-            feed_dict = {
-              input_placeholder: compds,
-              label_placeholder: labels})
+if __name__ == "__main__":
+  target_list = ["cdk2", "egfr_erbB1", "gsk3b", "hgfr",
+                 "map_k_p38a", "tpk_lck", "tpk_src", "vegfr2"]
 
-          # compute performance
-          TP,TN,FP,FN,SEN,SPE,MCC = pk_model.compute_performance(label_dense, prediction)
-
-          # print
-          format_str = "%6d %5d %5d %5d %5d %6.3f %6.3f %6.3f %6.3f %s"
-          outfile.write(format_str % (int(global_step), TP, FN, TN, FP, SEN, SPE, ACC, MCC, target_list[j]))
-          outfile.write('\n')
-          print(format_str % (int(global_step), TP, FN, TN, FP, SEN, SPE, ACC, MCC, target_list[j]))  
+  evaluate(target_list)
 
 
-        # neg_dataset
-
-
-
-
-
-        
-
-
-
-
-  outfile.close()
 

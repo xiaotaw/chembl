@@ -37,7 +37,7 @@ class DataSet(object):
   """dataset class, contains compds and labels, 
      and also provides method to generate a next batch of data. 
   """
-  def __init__(self, compds, labels, to_one_hot=True, dtype=numpy.float32):
+  def __init__(self, compds, labels, to_one_hot=True, dtype=numpy.float32, norm=False):
     assert compds.shape[0] == labels.shape[0], "shape don't match"
     self.compds = compds.astype(dtype)
     if to_one_hot:
@@ -47,6 +47,8 @@ class DataSet(object):
     self.size = compds.shape[0]
     self.begin = 0
     self.end = 0
+    if norm:
+      self.normalize()
 
   def generate_batch(self, batch_size):
     assert self.compds.shape[0] == self.labels.shape[0], "shape don't match"
@@ -66,6 +68,10 @@ class DataSet(object):
     random.shuffle(perm)
     self.compds = self.compds[perm]
     self.labels = self.labels[perm]
+
+  def normalize(self):
+    self.compds = self.compds / self.compds.max(axis=1).reshape([self.compds.shape[0],1])
+      
 
 def dense_to_one_hot(labels_dense, num_classes=2, dtype=numpy.int):
   """Convert class labels from scalars to one-hot vectors.
@@ -87,7 +93,10 @@ def get_inputs_by_cpickle(pkl_filename, clip=True):
     data = cPickle.load(pkl_file)
     if clip:
       numpy.clip(data, 0, 1, out=data)
-    return DataSet(data[:, 1:], data[:, :1], to_one_hot=True)
+      return DataSet(data[:, 1:], data[:, :1], to_one_hot=True)
+    else:
+      return DataSet(data[:, 1:], data[:, :1], to_one_hot=True, norm=True)
+    
 
 """ not used 
 def get_compds_by_filequeue(batch_size):

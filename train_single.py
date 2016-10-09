@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Author: xiaotaw@qq.com (Any bug report is welcome)
 # Time: Aug 2016
 # Addr: Shenzhen
@@ -25,7 +26,7 @@ def train(target, train_from = 0):
   """
   log_dir = "log_files"
   ckpt_dir = os.path.join("ckpt_files", target)
-  max_step = 3000
+  max_step = 10000
   keep_prob = 0.8,
   start_learning_rate = 0.05
   decay_step = 5000
@@ -35,9 +36,9 @@ def train(target, train_from = 0):
   if not os.path.exists(ckpt_dir):
     os.makedirs(ckpt_dir)
 
-  pos_dataset = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_train.pkl")
-  test_dataset = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_test.pkl")
-  neg_dataset = pk_input.get_inputs_by_cpickle("data_files/pkl_files/pubchem_neg_sample.pkl")
+  pos_dataset = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_train.pkl", clip=True)
+  test_dataset = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_test.pkl", clip=True)
+  neg_dataset = pk_input.get_inputs_by_cpickle("data_files/pkl_files/pubchem_neg_sample.pkl", clip=True)
 
   compds_all = numpy.vstack([pos_dataset.compds, neg_dataset.compds])
   labels_all = numpy.vstack([pos_dataset.labels, neg_dataset.labels])
@@ -50,9 +51,9 @@ def train(target, train_from = 0):
   logfile = open(log_path, 'w')
   logfile.write("train starts at: %s\n" % datetime.datetime.now())
 
-  with tf.Graph().as_default(), tf.device('/gpu:0'):
+  with tf.Graph().as_default(), tf.device('/gpu:1'):
     
-    input_placeholder = tf.placeholder(tf.float32, shape = (None, 2048))
+    input_placeholder = tf.placeholder(tf.float32, shape = (None, 8192))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
 
     global_step = tf.Variable(train_from, trainable=False)
@@ -76,17 +77,18 @@ def train(target, train_from = 0):
     train_op = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
 
     # create a saver.
-    #saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=None)
+    saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=None)
 
     # start running operations on the Graph.
-    config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+    config=tf.ConfigProto(allow_soft_placement=True)
+    config.gpu_options.per_process_gpu_memory_fraction = 0.6
     sess = tf.Session(config=config)
     
     # initialize all variables at first.
     sess.run(tf.initialize_all_variables())
 
     perm = range(batch_size)
-    compds_batch = numpy.zeros([batch_size, 2048])
+    compds_batch = numpy.zeros([batch_size, 8192])
     labels_batch = numpy.zeros([batch_size, 2])
 
     print("  step g_step wdloss xloss learn_rate    TP    FN    TN    FP    SEN    SPE    ACC    MCC t1-t0 t2-t1  target")
@@ -139,8 +141,10 @@ def train(target, train_from = 0):
         print(format_str % (step, global_step.eval(sess), LV, XLV, LR, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))      
 
 
+
       # eval train and test dataset
       if step % 1000 == 0 or (step + 1) == max_step:
+      #if (step + 1) == max_step:
         t3 = float(time.time())
         LV, XLV, LR, ACC, prediction, label_dense = sess.run(
           [wd_loss, 
@@ -186,10 +190,14 @@ def train(target, train_from = 0):
         print(format_str % (step, global_step.eval(sess), LV, XLV, LR, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, t6-t5, "test"))      
 
 
+
+
+
+
       # save the model checkpoint periodically.
-      #if step % 500 == 0 or (step + 1) == max_step:
-        #checkpoint_path = os.path.join(ckpt_dir, target, 'model.ckpt')
-        #saver.save(sess, checkpoint_path, global_step=global_step, write_meta_graph=False)
+      if step % 1000 == 0 or (step + 1) == max_step:
+        checkpoint_path = os.path.join(ckpt_dir, 'model.ckpt')
+        saver.save(sess, checkpoint_path, global_step=global_step, write_meta_graph=False)
 
   logfile.write("train ends at: %s\n" % datetime.datetime.now())
   logfile.close()
@@ -199,5 +207,5 @@ if __name__ == "__main__":
   target_list = ["cdk2", "egfr_erbB1", "gsk3b", "hgfr",
                  "map_k_p38a", "tpk_lck", "tpk_src", "vegfr2"]
 
-  train("egfr_erbB1")
+  train("vegfr2")
 

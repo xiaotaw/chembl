@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Author: xiaotaw@qq.com (Any bug report is welcome)
 # Time: Aug 2016
 # Addr: Shenzhen
@@ -34,7 +35,7 @@ def train(target_list, train_from = 0):
 
    
   # train log file
-  log_path = os.path.join(log_dir, "protein_kinase.log")
+  log_path = os.path.join(log_dir, "pk_train.log")
   logfile = open(log_path, 'w')
   logfile.write("train starts at: %s\n" % datetime.datetime.now())
 
@@ -43,22 +44,22 @@ def train(target_list, train_from = 0):
   train_dataset_dict = dict()
   test_dataset_dict = dict()
   for target in target_list:
-    train_dataset_dict[target] = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_train.pkl") 
-    test_dataset_dict[target] = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_test.pkl") 
+    train_dataset_dict[target] = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_train.pkl", clip=True) 
+    test_dataset_dict[target] = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_test.pkl", clip=True) 
 
-  neg_dataset = pk_input.get_inputs_by_cpickle("data_files/pkl_files/pubchem_neg_sample.pkl")
+  neg_dataset = pk_input.get_inputs_by_cpickle("data_files/pkl_files/pubchem_neg_sample.pkl", clip=True)
 
 
 
   # train the model 
-  with tf.Graph().as_default(), tf.device("/gpu:1"):
+  with tf.Graph().as_default(), tf.device("/gpu:0"):
 
     # exponential decay learning rate
     global_step = tf.Variable(train_from, trainable=False)
     learning_rate = tf.train.exponential_decay(start_learning_rate, global_step, decay_step, decay_rate)
 
     # build the model
-    input_placeholder = tf.placeholder(tf.float32, shape = (None, 2048))
+    input_placeholder = tf.placeholder(tf.float32, shape = (None, 8192))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
     # build the "Tree" with a mutual "Term" and several "Branches"
     base = pk_model.term(input_placeholder)
@@ -85,6 +86,7 @@ def train(target_list, train_from = 0):
 
     # start running operations on the Graph.
     config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+    config.gpu_options.per_process_gpu_memory_fraction = 0.5
     sess = tf.Session(config=config)
     
     # initialize all variables at first.
@@ -92,7 +94,7 @@ def train(target_list, train_from = 0):
 
     # define train batch
     perm = range(batch_size * 2)
-    compds_batch = numpy.zeros([batch_size * 2, 2048])
+    compds_batch = numpy.zeros([batch_size * 2, 8192])
     labels_batch = numpy.zeros([batch_size * 2, 2])
 
     # train with max step
@@ -139,6 +141,56 @@ def train(target_list, train_from = 0):
         if step % 1000 == 0 or (step + 1) == max_step:
           checkpoint_path = os.path.join(ckpt_dir, 'model.ckpt')
           saver.save(sess, checkpoint_path, global_step=global_step, write_meta_graph=False)
+
+    
+    for target in target_list:
+      # the whole train
+      compds_batch = numpy.vstack([train_dataset_dict[target].compds, neg_dataset.compds])
+      labels_batch = numpy.vstack([train_dataset_dict[target].labels, neg_dataset.labels])
+      LV, XLV, LR, ACC, prediction, label_dense = sess.run(
+        [wd_loss_dict[target], 
+         x_entropy_dict[target],
+         learning_rate, 
+         accuracy_dict[target], 
+         tf.argmax(softmax_dict[target], 1), 
+         tf.argmax(labels_batch, 1)], 
+        feed_dict = {
+          input_placeholder: compds_batch, 
+          label_placeholder: labels_batch, 
+        }
+      )
+  
+      TP, TN, FP, FN, SEN, SPE, MCC = pk_model.compute_performance(label_dense, prediction)
+
+      # print to file and screen
+      format_str = "%6d %6d %6.3f %6.3f %10.3f %5d %5d %5d %5d %6.3f %6.3f %6.3f %6.3f %5.3f %5.3f %s"
+      logfile.write(format_str % (step, global_step.eval(sess), LV, XLV, LR, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))
+      logfile.write('\n')
+      print(format_str % (step, global_step.eval(sess), LV, XLV, LR, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))    
+
+    for target in target_list:
+      # the whole test
+      LV, XLV, LR, ACC, prediction, label_dense = sess.run(
+        [wd_loss_dict[target], 
+         x_entropy_dict[target],
+         learning_rate, 
+         accuracy_dict[target], 
+         tf.argmax(softmax_dict[target], 1), 
+         tf.argmax(test_dataset_dict[target].labels, 1)], 
+        feed_dict = {
+          input_placeholder: test_dataset_dict[target].compds, 
+          label_placeholder: test_dataset_dict[target].labels, 
+        }
+      )
+  
+      TP, TN, FP, FN, SEN, SPE, MCC = pk_model.compute_performance(label_dense, prediction)
+
+      # print to file and screen
+      format_str = "%6d %6d %6.3f %6.3f %10.3f %5d %5d %5d %5d %6.3f %6.3f %6.3f %6.3f %5.3f %5.3f %s"
+      logfile.write(format_str % (step, global_step.eval(sess), LV, XLV, LR, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))
+      logfile.write('\n')
+      print(format_str % (step, global_step.eval(sess), LV, XLV, LR, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))    
+
 
   logfile.write("train ends at: %s\n" % datetime.datetime.now())
   logfile.close()
