@@ -16,50 +16,50 @@ import numpy
 import random
 import tensorflow as tf
 
-import pk_input
+import pk_input as pki
 import pk_model
 
 
 def train(target_list, train_from = 0):
 
+  # dataset
+  d = pki.Datasets(target_list)
+
+
   # model parameters
-  batch_size = 128
-  ckpt_dir = "ckpt_files"
+  pos_batch_size = 256
+  neg_batch_size = pos_batch_size * 10 # the mean number of neg sample is 25.23 times as many as pos's.
+  ckpt_dir = "ckpt_files/%d_%d" % (pos_batch_size, neg_batch_size)
+  if not os.path.exists(ckpt_dir):
+    os.makedirs(ckpt_dir)
   log_dir = "log_files"
-  max_step = 5000
+  if not os.path.exists(log_dir):
+    os.mkdir(log_dir)
+  step_per_epoch = d.neg.size / pos_batch_size
+  max_step = int(5.0 * step_per_epoch)
   keep_prob = 0.8
   start_learning_rate = 0.05
-  decay_step = 5000
+  decay_step = step_per_epoch * 8
   decay_rate = 0.7
 
+  input_vec_len = 6117
 
    
   # train log file
-  log_path = os.path.join(log_dir, "pk_train.log")
+  log_path = os.path.join(log_dir, "pk_train_%d_%d.log" % (pos_batch_size, neg_batch_size))
   logfile = open(log_path, 'w')
   logfile.write("train starts at: %s\n" % datetime.datetime.now())
 
 
-  # get input dataset
-  train_dataset_dict = dict()
-  test_dataset_dict = dict()
-  for target in target_list:
-    train_dataset_dict[target] = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_train.pkl", clip=True) 
-    test_dataset_dict[target] = pk_input.get_inputs_by_cpickle("data_files/pkl_files/" + target + "_test.pkl", clip=True) 
-
-  neg_dataset = pk_input.get_inputs_by_cpickle("data_files/pkl_files/pubchem_neg_sample.pkl", clip=True)
-
-
-
   # train the model 
-  with tf.Graph().as_default(), tf.device("/gpu:0"):
+  with tf.Graph().as_default(), tf.device("/gpu:2"):
 
     # exponential decay learning rate
     global_step = tf.Variable(train_from, trainable=False)
     learning_rate = tf.train.exponential_decay(start_learning_rate, global_step, decay_step, decay_rate)
 
     # build the model
-    input_placeholder = tf.placeholder(tf.float32, shape = (None, 8192))
+    input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
     # build the "Tree" with a mutual "Term" and several "Branches"
     base = pk_model.term(input_placeholder)
@@ -91,27 +91,20 @@ def train(target_list, train_from = 0):
     
     # initialize all variables at first.
     sess.run(tf.initialize_all_variables())
-
-    # define train batch
-    perm = range(batch_size * 2)
-    compds_batch = numpy.zeros([batch_size * 2, 8192])
-    labels_batch = numpy.zeros([batch_size * 2, 2])
+    if train_from != 0:
+      saver.restore(sess, "ckpt_files/256_256/pk.ckpt-" + str(train_from))
 
     # train with max step
-    print("  step g_step wdloss x_loss learn_rate    TP    FN    TN    FP    SEN    SPE    ACC    MCC t1-t0 t2-t1  target")
-    for step in xrange(0, max_step):
+    print("  step g_step wdloss x_loss learn_rate    TP    FN    TN    FP    SEN    SPE    ACC    MCC t1-t0 t2-t1 t3-t2  target")
+    for step in xrange(max_step):
       for target in target_list:
         t0 = time.time()
-        compds_batch[: batch_size], labels_batch[: batch_size] = neg_dataset.generate_batch(batch_size)
-        compds_batch[batch_size: ], labels_batch[batch_size: ] = train_dataset_dict[target].generate_batch(batch_size)
-        random.shuffle(perm)
-        compds_batch = compds_batch[perm]
-        labels_batch = labels_batch[perm]
-
-        _ = sess.run(train_op_dict[target], feed_dict={input_placeholder: compds_batch, label_placeholder: labels_batch})
+        compds_batch, labels_batch = d.next_train_batch(target, pos_batch_size, neg_batch_size)
 
         t1 = float(time.time())
+        _ = sess.run(train_op_dict[target], feed_dict={input_placeholder: compds_batch, label_placeholder: labels_batch})
 
+        t2 = float(time.time())
         # compute performance
         if step % 100 ==0 or (step + 1) == max_step:
           LV, XLV, LR, ACC, prediction, label_dense = sess.run(
@@ -129,24 +122,25 @@ def train(target_list, train_from = 0):
 
           TP, TN, FP, FN, SEN, SPE, MCC = pk_model.compute_performance(label_dense, prediction)
         
-          t2 = float(time.time())  
+          t3 = float(time.time())  
 
           # print to file and screen
-          format_str = "%6d %6d %6.3f %6.3f %10.3f %5d %5d %5d %5d %6.3f %6.3f %6.3f %6.3f %5.3f %5.3f %s"
-          logfile.write(format_str % (step, global_step.eval(sess), LV, XLV, LR, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))
+          format_str = "%6d %6d %6.3f %6.3f %10.9f %5d %5d %5d %5d %6.3f %6.3f %6.3f %6.3f %5.3f %5.3f %5.3f %s"
+          logfile.write(format_str % (step, global_step.eval(sess), LV, XLV, LR, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, t3-t2, target))
           logfile.write('\n')
-          print(format_str % (step, global_step.eval(sess), LV, XLV, LR, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))      
+          print(format_str % (step, global_step.eval(sess), LV, XLV, LR, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, t3-t2, target))      
 
         # save the model checkpoint periodically.
         if step % 1000 == 0 or (step + 1) == max_step:
-          checkpoint_path = os.path.join(ckpt_dir, 'model.ckpt')
+          checkpoint_path = os.path.join(ckpt_dir, 'pk.ckpt')
           saver.save(sess, checkpoint_path, global_step=global_step, write_meta_graph=False)
 
-    
+
+
     for target in target_list:
       # the whole train
-      compds_batch = numpy.vstack([train_dataset_dict[target].compds, neg_dataset.compds])
-      labels_batch = numpy.vstack([train_dataset_dict[target].labels, neg_dataset.labels])
+      compds_batch = numpy.vstack([d.pos[target].features[d.pos[target].train_perm], d.neg.features[d.neg.train_perm]])
+      labels_batch = numpy.vstack([d.pos[target].labels[d.pos[target].train_perm], d.neg.mask_dict[target][d.neg.train_perm]])
       LV, XLV, LR, ACC, prediction, label_dense = sess.run(
         [wd_loss_dict[target], 
          x_entropy_dict[target],
@@ -170,16 +164,18 @@ def train(target_list, train_from = 0):
 
     for target in target_list:
       # the whole test
+      compds_batch = numpy.vstack([d.pos[target].features[d.pos[target].test_perm], d.neg.features[d.neg.test_perm]])
+      labels_batch = numpy.vstack([d.pos[target].labels[d.pos[target].test_perm], d.neg.mask_dict[target][d.neg.test_perm]])
       LV, XLV, LR, ACC, prediction, label_dense = sess.run(
         [wd_loss_dict[target], 
          x_entropy_dict[target],
          learning_rate, 
          accuracy_dict[target], 
          tf.argmax(softmax_dict[target], 1), 
-         tf.argmax(test_dataset_dict[target].labels, 1)], 
+         tf.argmax(labels_batch, 1)], 
         feed_dict = {
-          input_placeholder: test_dataset_dict[target].compds, 
-          label_placeholder: test_dataset_dict[target].labels, 
+          input_placeholder: compds_batch,
+          label_placeholder: labels_batch, 
         }
       )
   
@@ -202,7 +198,7 @@ if __name__ == "__main__":
   target_list = ["cdk2", "egfr_erbB1", "gsk3b", "hgfr",
                  "map_k_p38a", "tpk_lck", "tpk_src", "vegfr2"]
 
-  train(target_list)
+  train(target_list, train_from=11824)
 
 
 
