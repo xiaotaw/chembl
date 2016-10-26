@@ -31,17 +31,16 @@ def fcnn_layer(input_tensor, input_dim, output_dim, layer_name,
     else:
       return relu
 
-def term(in_layer, in_units = 8192, th1_units = 4096, th2_units = 2048, th3_units = 1024, th4_units = 512, th5_units = 256,
+def term(in_layer, in_units = 6117, th1_units = 4096, th2_units = 2048, th3_units = 1024, th4_units = 512,
          wd=0.004/8, keep_prob=0.8):
   th1 = fcnn_layer(in_layer, in_units, th1_units, "term_layer1", wd=wd, wd_collection="term_wd_loss", keep_prob=keep_prob, variable_collection="term")
   th2 = fcnn_layer(th1, th1_units, th2_units, "term_layer2", wd=wd, wd_collection="term_wd_loss", keep_prob=keep_prob, variable_collection="term")
   th3 = fcnn_layer(th2, th2_units, th3_units, "term_layer3", wd=wd, wd_collection="term_wd_loss", keep_prob=keep_prob, variable_collection="term")
   th4 = fcnn_layer(th3, th3_units, th4_units, "term_layer4", wd=wd, wd_collection="term_wd_loss", keep_prob=keep_prob, variable_collection="term")
-  th5 = fcnn_layer(th4, th4_units, th5_units, "term_layer5", wd=wd, wd_collection="term_wd_loss", keep_prob=keep_prob, variable_collection="term")
-  return th5
+  return th4
 
 def branch(branch_name, base_layer, wd=0.004, keep_prob=0.8,
-           base_units = 256, bh1_units = 128, bh2_units = 64, out_units = 2):
+           base_units = 512, bh1_units = 256, bh2_units = 128, out_units = 2):
   var_collection="branch_"+branch_name
   with tf.name_scope(branch_name):
     bh1 = fcnn_layer(base_layer, base_units, bh1_units, "branch_layer1", wd=wd, wd_collection=branch_name+"_wd_loss", keep_prob=keep_prob, variable_collection=var_collection)
