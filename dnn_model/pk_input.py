@@ -59,7 +59,7 @@ class Dataset(object):
 
 
 class PosDataset(Dataset):
-  def __init__(self, target, dtype=np.float32):
+  def __init__(self, target, one_hot=True, dtype=np.float32):
     # open h5 file
     self.h5_fn = os.path.join(h5_dir, target + ".h5")
     self.h5 = h5py.File(self.h5_fn, "r")
@@ -71,8 +71,9 @@ class PosDataset(Dataset):
     tt = sparse.csr_matrix((self.h5["tt"]["data"], self.h5["tt"]["indices"], self.h5["tt"]["indptr"]), shape=[len(self.h5["tt"]["indptr"]) - 1, vec_len])
     self.features = sparse.hstack([ap, mg, tt]).toarray()
     # label 
-    labels = self.h5["label"].value
-    self.labels = dense_to_one_hot(labels)
+    self.labels = self.h5["label"].value
+    if one_hot == True:
+      self.labels = dense_to_one_hot(self.labels)
     # year
     if "year" in self.h5.keys():
       self.years = self.h5["year"].value
@@ -95,7 +96,7 @@ class PosDataset(Dataset):
 
 
 class NegDataset(Dataset):
-  def __init__(self, target_list, dtype=np.float32):
+  def __init__(self, target_list, one_hot=True, dtype=np.float32):
     # open h5 file
     self.h5_fn = os.path.join(h5_dir, "pubchem_neg_sample.h5")
     self.h5 = h5py.File(self.h5_fn, "r")
@@ -111,7 +112,10 @@ class NegDataset(Dataset):
     for target in target_list:
       #mask = self.h5["mask"][target].value
       mask = self.h5["cliped_mask"][target].value
-      self.mask_dict[target] = dense_to_one_hot(mask)
+      if one_hot == True:
+        self.mask_dict[target] = dense_to_one_hot(mask)
+      else:
+        self.mask_dict[target] = mask
     # close h5 file
     self.h5.close()
     # dtype
@@ -131,15 +135,15 @@ class Datasets(object):
   """dataset class, contains compds and labels, 
      and also provides method to generate a next batch of data. 
   """
-  def __init__(self, target_list):
+  def __init__(self, target_list, one_hot=True):
 
-    self.neg = NegDataset(target_list)
+    self.neg = NegDataset(target_list, one_hot=one_hot)
 
     # read pos sample 
     # and generate mask for neg sample(it's very complex, and I am not going to tell you the details)
     self.pos = {}
     for target in target_list:
-      self.pos[target] = PosDataset(target)
+      self.pos[target] = PosDataset(target, one_hot=one_hot)
 
   def next_train_batch(self, target, pos_batch_size, neg_batch_size):
     pos_feature_batch, pos_label_batch = self.pos[target].next_train_batch(pos_batch_size)
@@ -148,8 +152,7 @@ class Datasets(object):
     
 
 
-
-"""
+""" test
 import pk_input as pki
 target_list = ["cdk2", "egfr_erbB1", "gsk3b", "hgfr", "map_k_p38a", "tpk_lck", "tpk_src", "vegfr2"]
 d = pki.Datasets(target_list)
@@ -159,7 +162,6 @@ for step in range(20 * 500):
     compds_batch, labels_batch = d.next_train_batch(target, 128, 128)
     if np.isnan(compds_batch).sum() > 0 or (step % 500) == 0:
       print("%7d %3.2f %3.2f %3.2f %3.2f" % (step, compds_batch.min(), compds_batch.max(), labels_batch.min(), labels_batch.max()))
-
 
 """
 
