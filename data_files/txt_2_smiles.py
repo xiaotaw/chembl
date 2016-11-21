@@ -1,12 +1,52 @@
-#!/usr/bin/python
 # Author: xiaotaw@qq.com (Any bug report is welcome)
-# Time: Aug 2016
-# Addr: Shenzhen
+# Time Created: Aug 2016
+# Time Last Updated: Nov 2016
+# Addr: Shenzhen, China
 # Description: pick out pos and neg molecules for a target,
 #              inputs: txt file downloaded from chembl
 #              outputs: smiles file
 
 import os
+
+def is_pos(line):
+  """
+  # if <= 10 uM(10,000 nM), then pos, return 1,
+  # elif > 100 uM(100,000 nM), then neg, return 0,
+  # else then inconclussive, return -1,
+  # if line[14] the standard value is missing or not numerical, return -2,
+  # if line[15] the standart unit is not nM or ug.mL-1, return -3,
+  # other error, return -4
+  """
+  mol_wt = line[6]
+  std_type = line[12]
+  relation = line[13]
+  std_value = line[14]
+  std_unit = line[15]
+  # no value error
+  if std_value == "" or std_value == None:
+    return -2
+  std_value = float(std_value)
+  # using nM as std unit
+  if std_unit == "ug.ml-1" or std_unit == "ug.mL-1":
+    if mol_wt == "" or mol_wt == None:
+      return -2
+    std_value = std_value / float(mol_wt) * 1000 * 1000
+  elif not std_unit == "nM":
+    return -3
+  # pick out pos mol, return with 1
+  if relation == "<":
+    return 1 if std_value <= 10000 else -1
+  elif relation == "=":
+    if std_value <= 10000:
+      return 1
+    elif std_value > 10000:
+      return 0
+    else:
+      return -2
+  elif relation == ">":
+    return 0 if std_value >= 10000 else -1
+  return -4
+
 
 def txt2smile(in_file, out_file):
   """ select pos and neg compounds from txt file, which is downloaded from chembl.
@@ -26,23 +66,6 @@ def txt2smile(in_file, out_file):
 
   outfile.write("SMILES\tCHEMBL_ID\tCHEMBL_ID\tYEAR\tLABEL\n")
 
-  # if <= 10 uM(10,000 nM), then pos, return 1
-  # if > 100 uM(100,000 nM), then neg, return 0
-  def is_pos(line):
-    # if pos or neg
-    if line[13] == "<":
-      if float(line[14]) <= 10000:
-        return 1
-    elif line[13] == "=":
-      if float(line[14]) <= 10000:
-        return 1
-      elif float(line[14]) > 10000:
-        return 0
-    elif line[13] == ">":
-      if float(line[14]) >= 10000:
-        return 0
-    return -1
-
   for line in lines:
     label = is_pos(line)
     if is_pos(line) != -1:
@@ -52,27 +75,7 @@ def txt2smile(in_file, out_file):
 
 
 
-def is_pos(line):
-  """
-  # if <= 10 uM(10,000 nM), then pos, return 1
-  # elif > 100 uM(100,000 nM), then neg, return 0
-  # else then inconclussive, return -1
-  # if line[14] the number is missing, also return -1
-  """
-  if line[14] == "" or line[14] == None:
-    return -1
-  if line[13] == "<":
-    if float(line[14]) <= 10000:
-      return 1
-  elif line[13] == "=":
-    if float(line[14]) <= 10000:
-      return 1
-    elif float(line[14]) > 10000:
-      return 0
-  elif line[13] == ">":
-    if float(line[14]) >= 10000:
-      return 0
-  return -1
+
 
 
 def txt2smiles_1():
@@ -107,7 +110,7 @@ def txt2smiles_1():
   outfile_dict = dict()
   for k in abbr_dict.keys():
     outfile_dict[k] = open(os.path.join(structure_dir, abbr_dict[k]+".smiles"), "w")
-    outfile_dict[k].write("SMILES\tCHEMBL_ID\tCHEMBL_ID\tYEAR\tLABEL\n")
+    outfile_dict[k].write("SMILES\tCHEMBL_ID\tCHEMBL_ID\tYEAR\tLABEL\tTYPE\tRELATION\tVALUE\n")
  
   # read info for each molecule(line)
   #for line in lines:
@@ -115,9 +118,9 @@ def txt2smiles_1():
     line = lines[i]
     if line[12] == "IC50" or line[12] == "ic50":
       label = is_pos(line)
-      if label != -1:
+      if label >= -1:
         # outfile write like: smiles, chemblid, chemblid, year, label
-        outfile_dict[line[38]].write("%s\t%s\t%s\t%s\t%d\n" % (line[10], line[0], line[0], line[48], label))
+        outfile_dict[line[38]].write("%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\n" % (line[10], line[0], line[0], line[48], label, line[12], line[13], line[14]))
 
   # close smiles files
   for k in abbr_dict.keys():
