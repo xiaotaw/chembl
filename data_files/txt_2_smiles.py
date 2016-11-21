@@ -75,9 +75,6 @@ def txt2smile(in_file, out_file):
 
 
 
-
-
-
 def txt2smiles_1():
   """ an other version of txt2smile,
       No input and output parameters.
