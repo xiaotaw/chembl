@@ -1,14 +1,15 @@
 # Author: xiaotaw@qq.com (Any bug report is welcome)
-# Time: Aug 2016
-# Addr: Shenzhen
-# Description: 
+# Time Created: Aug 2016
+# Time Last Updated: Oct 2016
+# Addr: Shenzhen, China
+# Description: dnn model for pk
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import math
-import numpy
+import numpy as np
 import tensorflow as tf
 
 
@@ -31,31 +32,33 @@ def fcnn_layer(input_tensor, input_dim, output_dim, layer_name,
     else:
       return relu
 
-def term(in_layer, in_units = 6117, th1_units = 4096, th2_units = 2048, th3_units = 1024, th4_units = 512,
-         wd=0.004/8, keep_prob=0.8):
+def term(in_layer, in_units = 9561, th1_units = 8192, th2_units = 6144, th3_units = 4096, 
+         wd=0.004, keep_prob=0.8):
   th1 = fcnn_layer(in_layer, in_units, th1_units, "term_layer1", wd=wd, wd_collection="term_wd_loss", keep_prob=keep_prob, variable_collection="term")
   th2 = fcnn_layer(th1, th1_units, th2_units, "term_layer2", wd=wd, wd_collection="term_wd_loss", keep_prob=keep_prob, variable_collection="term")
   th3 = fcnn_layer(th2, th2_units, th3_units, "term_layer3", wd=wd, wd_collection="term_wd_loss", keep_prob=keep_prob, variable_collection="term")
-  th4 = fcnn_layer(th3, th3_units, th4_units, "term_layer4", wd=wd, wd_collection="term_wd_loss", keep_prob=keep_prob, variable_collection="term")
-  return th4
+  #th4 = fcnn_layer(th3, th3_units, th4_units, "term_layer4", wd=wd, wd_collection="term_wd_loss", keep_prob=keep_prob, variable_collection="term")
+  return th3
 
 def branch(branch_name, base_layer, wd=0.004, keep_prob=0.8,
-           base_units = 512, bh1_units = 256, bh2_units = 128, out_units = 2):
+           base_units = 4096, bh1_units = 4096, bh2_units = 2048, bh3_units = 1024, out_units = 2):
   var_collection="branch_"+branch_name
   with tf.name_scope(branch_name):
     bh1 = fcnn_layer(base_layer, base_units, bh1_units, "branch_layer1", wd=wd, wd_collection=branch_name+"_wd_loss", keep_prob=keep_prob, variable_collection=var_collection)
     bh2 = fcnn_layer(bh1, bh1_units, bh2_units, "branch_layer2", wd=wd, wd_collection=branch_name+"_wd_loss", keep_prob=keep_prob, variable_collection=var_collection)
+    bh3 = fcnn_layer(bh2, bh2_units, bh3_units, "branch_layer3", wd=wd, wd_collection=branch_name+"_wd_loss", keep_prob=keep_prob, variable_collection=var_collection)
     with tf.name_scope("softmax_linear"):
-      weights = tf.Variable(tf.truncated_normal([bh2_units, out_units], stddev=1.0 / math.sqrt(float(bh2_units))), name="weights")
+      weights = tf.Variable(tf.truncated_normal([bh3_units, out_units], stddev=1.0 / math.sqrt(float(bh3_units))), name="weights")
       biases  = tf.Variable(tf.zeros([out_units]), name="biases")
       tf.add_to_collection(var_collection, weights)
       tf.add_to_collection(var_collection, biases)
-      softmax = tf.nn.softmax(tf.matmul(bh2, weights) + biases, name="softmax")
+      softmax = tf.nn.softmax(tf.matmul(bh3, weights) + biases, name="softmax")
     return softmax
 
-def x_entropy(softmax, labels, loss_name):
+def x_entropy(softmax, labels, loss_name, neg_weight=1):
   with tf.name_scope(loss_name):
-    cross_entropy = -tf.reduce_sum(tf.reduce_mean(labels * tf.log(softmax), reduction_indices=[0]), name="x_entropy")
+    weight = np.array([neg_weight, 1]).astype(np.float32)
+    cross_entropy = -tf.reduce_sum(tf.reduce_mean(labels * tf.log(softmax) * weight, reduction_indices=[0]), name="x_entropy")
     return cross_entropy
 
 def accuracy(softmax, labels, accuracy_name):
