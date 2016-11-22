@@ -1,3 +1,9 @@
+# Author: xiaotaw@qq.com (Any bug report is welcome)
+# Time Created: Oct 2016
+# Time Last Updated: Oct 2016
+# Addr: Shenzhen, China
+# Description: using multi-thread to load input data and generate batch.
+
 import time
 
 import Queue
@@ -23,10 +29,11 @@ class Producer(threading.Thread):
   def run(self):
     for i in range(10):
       t0 = time.time()
-      batch = self.d.next_train_batch(target, 256, 256*25)
+      batch = self.d.next_train_batch(target, 100, 200)
       t1 = time.time()
       #print("%s: %s generate batch with neg_begin=%d %5.3f" % (time.ctime(), self.getName(), self.d.neg.train_begin, t1-t0))
       self.queue.put(batch, block=True, timeout=None)
+      time.sleep(0.5)
     #print("%s: %s finished!" % (time.ctime(), self.getName()))
 
 # consumer thread
@@ -67,45 +74,3 @@ if __name__ == "__main__":
   
 
 
-
-
-"""
-# normal
-for i in range(0, 10000):
-  t0 = time.time()
-  compds_batch, labels_batch = d.next_train_batch(target, 256, 256*25)
-  t1 = float(time.time())
-  if i % 10 == 0 or (i+1) == 10000:
-    print("%d %5.3f" % (i, t1-t0))
-
-0 0.851
-10 0.815
-20 0.762
-30 0.787
-40 0.811
-50 0.805
-60 0.795
-70 0.812
-80 0.766
-90 0.755
-100 0.842
-110 0.831
-120 0.819
-130 0.765
-140 0.817
-150 0.746
-160 0.810
-170 0.790
-180 0.775
-190 0.812
-200 0.648
-210 0.685
-220 0.794
-230 0.686
-240 0.573
-250 0.691
-260 0.698
-270 0.778
-280 0.767
-290 0.841
-"""
