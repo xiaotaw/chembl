@@ -1,13 +1,17 @@
-#!/usr/bin/python
 # Author: xiaotaw@qq.com (Any bug report is welcome)
-# Time: Aug 2016
-# Addr: Shenzhen
-# Description: convert mgfp(morgan fingerprint) file into binary_code file
+# Time Created: Aug 2016
+# Time Last Updated: Nov 2016
+# Addr: Shenzhen, China
+# Description: convert fp(such as morgan fingerprint) into binary code,
+#              and store in a hdf5 file
+
+
 
 import os
 import sys
 import h5py
 import numpy as np
+import pandas as pd
 from scipy import sparse
 import matplotlib.pyplot as plt
 
@@ -21,7 +25,6 @@ def read_fp(filename):
   """
   chembl_id_list = []
   fps_list = []
-
   infile = open(filename, "r")
   line_num = 0
   for line in infile:
@@ -39,7 +42,6 @@ def read_fp(filename):
         fps[k] = v 
     chembl_id_list.append(chembl_id)
     fps_list.append(fps)
-
   infile.close()
   return chembl_id_list, fps_list
 
@@ -47,7 +49,6 @@ def read_fp(filename):
 #def fp2mat(fps_list, vec_len=1021, hash_func=None, dtype=np.int16):
 def fp2mat(fps_list, vec_len=2039, hash_func=None, dtype=np.int16):
   """ convert fingerprint(for short: fp) into a csr_matrix
-
   Args:
     fps_list: <type 'list'>, list of dict, such as [{5534: 1, 78976: 34}],
         contains the fingerprint of a molecule, 
@@ -62,14 +63,12 @@ def fp2mat(fps_list, vec_len=2039, hash_func=None, dtype=np.int16):
         if None, simply devide fp id with vec_len and return remainder, 
         i.e. hashed number = fp id % vec_len, or hashed number = mod(fp id, vec_len)
     dtype: <type 'type'>, default is numpy.int16
-
   Return:
     mat: <calss 'scipy.sparse.csr.csr_matrix'>,
         the shape of vec must be (len(fps_list), vec_len)
   """
   if hash_func == None:
     hash_func = lambda x: x % vec_len
-
   indptr = [0]
   indices = []
   data = []
@@ -78,22 +77,21 @@ def fp2mat(fps_list, vec_len=2039, hash_func=None, dtype=np.int16):
       indices.append(hash_func(k))
       data.append(v)
     indptr.append(len(indices))
-
   a = sparse.csr_matrix((data, indices, indptr), shape=(len(fps_list), vec_len), dtype=dtype)
-
   # check whether too much infomation was missed after hash.
   # original info: np.array([len(x) for x in fps_list]).mean()
   # after hash info: (a.toarray() != 0).sum(axis=1).mean()
   #print(a.shape, a.max(), a.min(), (a.toarray() != 0).sum(axis=1).mean(), np.array([len(x) for x in fps_list]).mean())
-
   return a
        
 
 
 
+
+
 if __name__ == "__main__":
 
-
+  """
   fp_dir = "fp_files"
   h5_dir = "h5_files"
   if not os.path.exists(h5_dir):
@@ -104,9 +102,20 @@ if __name__ == "__main__":
   target_list = ["cdk2", "egfr_erbB1", "gsk3b", "hgfr",
                  "map_k_p38a", "tpk_lck", "tpk_src", "vegfr2"]
 
-  #target_list.append("pubchem_neg_sample")
+  apfp_fn = os.path.join(fp_dir, "apfp.picked_all")
+  apfp_picked_all = list(np.genfromtxt(apfp_fn).astype(int))
 
-  """
+  l = len(apfp_picked_all)
+
+  def apfp_hash(x):
+    if x in apfp_picked_all:
+      return apfp_picked_all.index(x)
+    else:
+      return l
+
+  #target_list.append("pubchem_neg_sample")
+  target_list = ["pubchem_neg_sample"]
+
   for target in target_list:
     print("process %s..." % target)
 
@@ -114,24 +123,13 @@ if __name__ == "__main__":
     h5_fn = os.path.join(h5_dir, target + ".h5")
     h5 = h5py.File(h5_fn, "w")
   
-    # read mgfp from file and encode into sparse matrix
-    mgfp_fn = os.path.join(fp_dir, target + ".mgfp6")
-    id_list, mgfps_list = read_fp(mgfp_fn)
-    mgmat = fp2mat(mgfps_list)
+    # read apfp from file and encode into sparse matrix
+    apfp_fn = os.path.join(fp_dir, target + ".apfp")
+    id_list, apfps_list = read_fp(apfp_fn)
+    apmat = fp2mat(apfps_list, vec_len=len(apfp_picked_all)+1, hash_func=apfp_hash)
 
     # save chembl id
     h5["chembl_id"] = id_list
-
-    # save mgfp's sparse matrix
-    mgh5 = h5.create_group("/mg")
-    mgh5["data"] = mgmat.data
-    mgh5["indices"] = mgmat.indices
-    mgh5["indptr"] = mgmat.indptr
-
-    # read apfp from file and encode into sparse matrix
-    apfp_fn = os.path.join(fp_dir, target + ".apfp")
-    _, apfps_list = read_fp(apfp_fn)
-    apmat = fp2mat(apfps_list)
 
     # save apfp's sparse matrix
     aph5 = h5.create_group("/ap")
@@ -139,21 +137,31 @@ if __name__ == "__main__":
     aph5["indices"] = apmat.indices
     aph5["indptr"] = apmat.indptr
 
-    # read ttfp from file and encode into sparse matrix
-    ttfp_fn = os.path.join(fp_dir, target + ".ttfp")
-    _, ttfps_list = read_fp(ttfp_fn)
-    ttmat = fp2mat(ttfps_list)
+    # read mgfp from file and encode into sparse matrix
+    #mgfp_fn = os.path.join(fp_dir, target + ".mgfp6")
+    #id_list, mgfps_list = read_fp(mgfp_fn)
+    #mgmat = fp2mat(mgfps_list)
+    # save mgfp's sparse matrix
+    #mgh5 = h5.create_group("/mg")
+    #mgh5["data"] = mgmat.data
+    #mgh5["indices"] = mgmat.indices
+    #mgh5["indptr"] = mgmat.indptr
 
+    # read ttfp from file and encode into sparse matrix
+    #ttfp_fn = os.path.join(fp_dir, target + ".ttfp")
+    #_, ttfps_list = read_fp(ttfp_fn)
+    #ttmat = fp2mat(ttfps_list)
     # save ttfp's sparse matrix
-    tth5 = h5.create_group("/tt")
-    tth5["data"] = ttmat.data
-    tth5["indices"] = ttmat.indices
-    tth5["indptr"] = ttmat.indptr
+    #tth5 = h5.create_group("/tt")
+    #tth5["data"] = ttmat.data
+    #tth5["indices"] = ttmat.indices
+    #tth5["indptr"] = ttmat.indptr
 
     h5.close()
   """
 
-  """ add label
+  """
+  # add label
   for target in target_list:
     print("add label year for %s" % target)
     # read label
@@ -185,53 +193,32 @@ if __name__ == "__main__":
     h5.close()
   """
 
-  """
-
-  part_num = int(sys.argv[1])
-
-  # pubchem all compounds
-  mgfp_dir = "/raid/xiaotaw/pubchem/morgan_fp"
-  pkl_dir = "/raid/xiaotaw/pubchem/pkl_files"
 
 
-  #for i in xrange(1, 121225001, 25000):
-  begin_num = part_num * 10000000 + 1
-  if part_num == 11:
-    end_num = 121225001
-  else:
-    end_num = (part_num + 1) * 10000000 + 1  
-
-  for i in xrange(begin_num, end_num, 25000):
-    in_file = "Compound_" + "{:0>9}".format(i) + "_" + "{:0>9}".format(i + 24999) + ".mgfp"
-    if not os.path.exists(os.path.join(mgfp_dir, in_file)):
-      print("%s\t0\tnot exists" % in_file)
-      continue
-    mgfp2code(in_file, 
-              has_label=False, add_label=False, 
-              mgfp_dir=mgfp_dir, pkl_dir=pkl_dir, code_len=8192)
-
-  """
 
 
-#""" generate mask for pns (generate cliped_mask)
+#"""
+# generate mask for pns (generate cliped_mask)
 pns_fn = "h5_files/pubchem_neg_sample.h5"
 pns_hf = h5py.File(pns_fn, "r+")
 #pns_m = pns_hf.create_group("mask")
 pns_m = pns_hf.create_group("cliped_mask")
 
-vec_len = 2039
+vec_len = 9561
 
 ap = sparse.csr_matrix((pns_hf["ap"]["data"], pns_hf["ap"]["indices"], pns_hf["ap"]["indptr"]), shape=[len(pns_hf["ap"]["indptr"]) - 1, vec_len])
-mg = sparse.csr_matrix((pns_hf["mg"]["data"], pns_hf["mg"]["indices"], pns_hf["mg"]["indptr"]), shape=[len(pns_hf["mg"]["indptr"]) - 1, vec_len])
-tt = sparse.csr_matrix((pns_hf["tt"]["data"], pns_hf["tt"]["indices"], pns_hf["tt"]["indptr"]), shape=[len(pns_hf["tt"]["indptr"]) - 1, vec_len])
+#mg = sparse.csr_matrix((pns_hf["mg"]["data"], pns_hf["mg"]["indices"], pns_hf["mg"]["indptr"]), shape=[len(pns_hf["mg"]["indptr"]) - 1, vec_len])
+#tt = sparse.csr_matrix((pns_hf["tt"]["data"], pns_hf["tt"]["indices"], pns_hf["tt"]["indptr"]), shape=[len(pns_hf["tt"]["indptr"]) - 1, vec_len])
 
 #pns = sparse.hstack([ap, mg, tt]).toarray()
-pns = np.clip(sparse.hstack([ap, mg, tt]).toarray(), 0, 1)
+#pns = np.clip(sparse.hstack([ap, mg, tt]).toarray(), 0, 1)
+pns = np.clip(ap.toarray(), 0, 1)
 
 
 
 target_list = ["cdk2", "egfr_erbB1", "gsk3b", "hgfr",
                  "map_k_p38a", "tpk_lck", "tpk_src", "vegfr2"]
+
 
 h5_dir = "h5_files"
 for target in target_list:
@@ -240,9 +227,10 @@ for target in target_list:
   if "mask" in hf.keys():
     del hf["mask"]
   ap = sparse.csr_matrix((hf["ap"]["data"], hf["ap"]["indices"], hf["ap"]["indptr"]), shape=[len(hf["ap"]["indptr"]) - 1, vec_len])
-  mg = sparse.csr_matrix((hf["mg"]["data"], hf["mg"]["indices"], hf["mg"]["indptr"]), shape=[len(hf["mg"]["indptr"]) - 1, vec_len])
-  tt = sparse.csr_matrix((hf["tt"]["data"], hf["tt"]["indices"], hf["tt"]["indptr"]), shape=[len(hf["tt"]["indptr"]) - 1, vec_len])
-  features = np.clip(sparse.hstack([ap, mg, tt]).toarray(), 0, 1)
+  #mg = sparse.csr_matrix((hf["mg"]["data"], hf["mg"]["indices"], hf["mg"]["indptr"]), shape=[len(hf["mg"]["indptr"]) - 1, vec_len])
+  #tt = sparse.csr_matrix((hf["tt"]["data"], hf["tt"]["indices"], hf["tt"]["indptr"]), shape=[len(hf["tt"]["indptr"]) - 1, vec_len])
+  #features = np.clip(sparse.hstack([ap, mg, tt]).toarray(), 0, 1)
+  features = np.clip(ap.toarray(), 0, 1)
   a = features[hf["label"].value.astype(bool)]
   mask = []
   for l in pns:
