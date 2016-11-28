@@ -101,12 +101,9 @@ log_files/
 
 # data files
 fp_files/
-h5_files/
-id_files/
 structure_files/
-txt_downloaded_from_chembl
+txt_files/
 csv_files/
-csv_files_zipped/
 
 # cpkt files
 ckpt*/
