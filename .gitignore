@@ -90,7 +90,7 @@ ENV/
 .ropeproject
 
 
-# protein_kinase ingores
+# costom ingores
 #
 
 !.gitignore
