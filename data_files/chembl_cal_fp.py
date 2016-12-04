@@ -1,6 +1,6 @@
 # Author: xiaotaw@qq.com (Any bug report is welcome)
 # Time Created: Nov 2016
-# Time Last Updated: Nov 2016
+# Time Last Updated: Dec 2016
 # Addr: Shenzhen, China
 # Description: 1. calculate atom pair fingerprint(apfp) for chembl molecules
 #              2. analyse apfp
@@ -17,6 +17,16 @@ def dict_2_str(d):
   keylist.sort()
   kv_list = ["{}: {}".format(k, d[k]) for k in keylist] 
   return ", ".join(kv_list)
+
+"""
+def str_2_dict(fps_str):
+  fps_dict = {}
+  for fp in fps_str[1:-1].split(","):
+    if ":" in fp:
+      k, v = fp.split(":")
+      fps_dict[int(k)] = int(v)
+  return fps_dict
+"""
 
 ## calculate chembl apfp
 #
@@ -38,6 +48,7 @@ apfp_file.close()
 
 
 ## calculate pns apfp
+#
 sup = Chem.SDMolSupplier("structure_files/pubchem_neg_sample.sdf")
 
 apfp_file = open("fp_files/pubchem_neg_sample.apfp", "w")
@@ -51,7 +62,7 @@ for m in sup:
 
 apfp_file.close()
 
-# 
+
 ##pick out some apfps
 #Descrition:
 #  After calculate fps, I found that many fps was so rare that only few 
