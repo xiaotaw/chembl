@@ -73,6 +73,15 @@ for fps_str in target_fps:
       target_count[int(k)] += 1
 
 target_count.update(pns_count)
+
+# save target apfp count 
+count_file = open("mask_files/%s_apfp.count" % target, "w")
+for k in target_count.keys():
+  count_file.write("%d\t%d\n" % (k, target_count[k]))
+
+count_file.close()
+  
+
 v = np.array([[k, target_count[k]] for k in target_count.keys()])
 m = v[:, 1] > 10
 target_apfp_picked = v[m][:, 0]
@@ -98,7 +107,8 @@ def sparse_features(fps_list):
   a = sparse.csr_matrix((np.array(data), indices, indptr), shape=(len(fps_list), len(target_apfp_picked) + 1))
   return a
 
-
+# normally, abs(clf_label) > 0.5
+#target_pos_id = target_clf_label[target_clf_label[:, 2].astype(float) > 0.5][:, 1]
 
 target_pos_id = target_clf_label[target_clf_label[:, 2].astype(float) > 0][:, 1]
 target_pos_fps = [chembl_apfp[x] for x in target_pos_id]
@@ -170,7 +180,7 @@ for i in range(n_jobs):
 log.write("generate mask for pns, duration: %.3f\n" % (t2 - t1))
 log.close()
 
-mask_file = open("fp_files/%s_pns.mask" % target, "w")
+mask_file = open("mask_files/%s_pns.mask" % target, "w")
 mask_file.writelines(["%s\t%s\n" % (x, target_pns_mask[x]) for x in pns_id])
 mask_file.close()
 
@@ -220,7 +230,7 @@ for i in range(n_jobs):
 log.write("generate mask for cns, duration: %.3f\n" % (t3 - t2))
 log.close()
 
-mask_file = open("fp_files/%s_cns.mask" % target, "w")
+mask_file = open("mask_files/%s_cns.mask" % target, "w")
 mask_file.writelines(["%s\t%s\n" % (x, target_cns_mask[x]) for x in chembl_id])
 mask_file.close()
 
