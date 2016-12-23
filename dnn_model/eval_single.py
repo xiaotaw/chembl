@@ -9,125 +9,158 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import sys
 import time
-import numpy
+import numpy as np
 import datetime
 import tensorflow as tf
 
 import pk_model 
-import pk_input as pki
+sys.path.append("/home/scw4750/Documents/chembl/data_files/")
+import chembl_input as ci
 
 
-def evaluate(d, target, g_step_list=None):
+def evaluate(target, g_step_list=None):
   """ evaluate the model 
   """
-  # batch size.
-  # note: the mean number of neg sample is 25.23 times as many as pos's.
-  neg_batch_size = 512
-  pos_batch_size = int(neg_batch_size * d.pos[target].size / d.neg.size) 
+  # dataset
+  d = ci.Dataset(target)
+  # batch size
+  batch_size = 128
   # learning rate 
-  step_per_epoch = int(d.neg.size / neg_batch_size)
-  start_learning_rate = 0.05
-  decay_step = step_per_epoch * 10
-  decay_rate = 0.9
-  # max train steps
-  max_step = 700 * step_per_epoch
+  step_per_epoch = int(d.train_size / batch_size)
   # input vec_len
-  input_vec_len = d.neg.features.shape[1]
+  input_vec_len = d.train_features.shape[1]
   # keep prob
   keep_prob = 0.8
   # weight decay
   wd = 0.004
   # checkpoint file
   ckpt_dir = "ckpt_files/%s" % target
-  ckpt_path = os.path.join(ckpt_dir, '%d_%d_%4.3f_%4.3e.ckpt' % (pos_batch_size, neg_batch_size, keep_prob, wd))
-  #ckpt_path = os.path.join(ckpt_dir, '%d_%d.ckpt' % (pos_batch_size, neg_batch_size))
+  ckpt_path = os.path.join(ckpt_dir, '%d_%4.3f_%4.3e.ckpt' % (batch_size, keep_prob, wd))
   # eval log file
   log_dir = "log_files"
   if not os.path.exists(log_dir):
     os.mkdir(log_dir)
-  log_path = os.path.join(log_dir, "eval_%s_%d_%d_%4.3f_%4.3e.log" % (target, pos_batch_size, neg_batch_size, keep_prob, wd))
+  log_path = os.path.join(log_dir, "eval_%s_%d_%4.3f_%4.3e.log" % (target, batch_size, keep_prob, wd))
   logfile = open(log_path, 'w')
   logfile.write("eval starts at: %s\n" % datetime.datetime.now())
 
   
   # g_step_list
   #step_list = range(0, 24991, 10 * step_per_epoch)
-  g_step_list = range(30871, 44100, 10 * step_per_epoch)
-  g_step_list.append(44100)
+  g_step_list = range(1, 2235900, 10 * step_per_epoch)
+  g_step_list.append(2235900)
 
-  with tf.Graph().as_default(), tf.device("/gpu:1"):
+  with tf.Graph().as_default(), tf.device("/gpu:3"):
     
     # build the model
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
     # build the "Tree" with a mutual "Term" and several "Branches"
-    base = pk_model.term(input_placeholder, wd=wd, keep_prob=1.0)
+    base = pk_model.term(input_placeholder, in_units=input_vec_len, wd=wd, keep_prob=1.0)
     # compute softmax
     softmax = pk_model.branch(target, base, wd=wd, keep_prob=1.0)
     # compute loss.
     wd_loss = tf.add_n(tf.get_collection("term_wd_loss") + tf.get_collection(target+"_wd_loss"))
     x_entropy = pk_model.x_entropy(softmax, label_placeholder, target)
     loss  = tf.add(wd_loss, x_entropy)
-    # compute accuracy
-    accuracy = pk_model.accuracy(softmax, label_placeholder, target)
     # create a saver.
     saver = tf.train.Saver(tf.trainable_variables())
     # create session.
     config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
-    config.gpu_options.per_process_gpu_memory_fraction = 0.6
+    config.gpu_options.per_process_gpu_memory_fraction = 0.9
     sess = tf.Session(config=config)
 
     # format str
     format_str = "%6d %6.4f %7.5f %10.8f %5d %5d %5d %5d %6.4f %6.4f %6.4f %6.4f %5.3f %5.3f %5.3f %10s "
 
+    # pns
+    pns_compds = d.target_pns_features.toarray()
+    pns_labels_dense = d.target_pns_mask.values.astype(int)
+    pns_labels_one_hot = ci.dense_to_one_hot(pns_labels_dense)
 
-    compds_train = numpy.vstack([d.pos[target].features[d.pos[target].train_perm], d.neg.features[d.neg.train_perm]])
-    labels_train = numpy.vstack([d.pos[target].labels[d.pos[target].train_perm], d.neg.mask_dict[target][d.neg.train_perm]])
+    # target test
+    test_compds = d.test_features.toarray()
+    test_labels_dense = d.test_labels
+    test_labels_one_hot = d.test_labels_one_hot
 
-
-    compds_test = numpy.vstack([d.pos[target].features[d.pos[target].test_perm], d.neg.features[d.neg.test_perm]])
-    labels_test = numpy.vstack([d.pos[target].labels[d.pos[target].test_perm], d.neg.mask_dict[target][d.neg.test_perm]])
+    # target train
+    time_split_train = d.target_clf_label[d.target_clf_label["YEAR"] <= 2014]
+    m = d.target_cns_mask.index.isin(time_split_test["CMPD_CHEMBLID"])
+    target_train_features = d.target_cns_features[m]
+    target_train_labels_dense = d.target_cns_mask[m].values.astype(int)
+    target_train_labels_one_hot = ci.dense_to_one_hot(target_train_labels_dense)
 
     for g_step in g_step_list:
       # Restores variables from checkpoint
       saver.restore(sess, ckpt_path + "-%d" % g_step)
 
-      # the whole train
-      t0 = time.time()
-      t1 = time.time()
+      # the whole pns
       t2 = time.time()
-      wd_ls, x_ls, acc, pred, label_dense = sess.run([wd_loss, x_entropy, accuracy, tf.argmax(softmax, 1), tf.argmax(labels_train, 1)], 
-        feed_dict = {input_placeholder: compds_train, label_placeholder: labels_train})
-      tp, tn, fp, fn, sen, spe, mcc = pk_model.compute_performance(label_dense, pred)
+      wd_ls, x_ls, pred = sess.run([wd_loss, x_entropy, tf.argmax(softmax, 1)], 
+        feed_dict = {input_placeholder: pns_compds, label_placeholder: pns_labels_one_hot})
+      tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(pns_labels_dense, pred)
       t3 = time.time()
-      logfile.write(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, t1-t0, t2-t1, t3-t2, target))
-      print(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, t1-t0, t2-t1, t3-t2, target))    
+      logfile.write(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, t3-t2, target) + "\n")
+      print(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, t3-t2, target))      
 
-      # the whole test
-      t0 = time.time()
-      t1 = time.time()
+      # the whole cns
       t2 = time.time()
-      wd_ls, x_ls, acc, pred, label_dense = sess.run([wd_loss, x_entropy, accuracy, tf.argmax(softmax, 1), tf.argmax(labels_test, 1)], 
-        feed_dict = {input_placeholder: compds_test, label_placeholder: labels_test})
-      tp, tn, fp, fn, sen, spe, mcc = pk_model.compute_performance(label_dense, pred)
+      # 878721 / 10000 = 87.8721 < 88
+      wd_ls = x_ls = acc = 0
+      pred_list = []
+      label_dense_list = []
+      d.reset_begin_end_cns()
+      for i in range(88):
+        compds_train, labels_train = d.generate_cns_batch_once(10000)
+        x_ls_b, pred_b = sess.run([x_entropy, tf.argmax(softmax, 1)], 
+          feed_dict = {input_placeholder: compds_train, label_placeholder: labels_train})
+        x_ls += x_ls_b * compds_train.shape[0]
+        pred_list.append(pred_b) 
+      x_ls /= d.target_cns_features.shape[0]
+      pred = np.hstack(pred_list)
+      tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(d.target_cns_mask.values.astype(int), pred)
       t3 = time.time()
-      logfile.write(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, t1-t0, t2-t1, t3-t2, target))
-      logfile.write('\n')
-      print(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, t1-t0, t2-t1, t3-t2, target))    
+      logfile.write(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, t3-t2, target) + "\n")
+      print(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, t3-t2, target)) 
+    
+      # the target's train
+      t2 = time.time()
+      x_ls, pred= sess.run([x_entropy, tf.argmax(softmax, 1)], 
+        feed_dict = {input_placeholder: target_train_features, label_placeholder: target_train_labels_one_hot})
+      tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(target_train_labels_dense, pred)
+      t3 = time.time()
+      logfile.write(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, t3-t2, target) + "\n")
+      print(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, t3-t2, target))    
+
+      # the target's test
+      t2 = time.time()
+      x_ls, pred= sess.run([x_entropy, tf.argmax(softmax, 1)], 
+        feed_dict = {input_placeholder: test_compds, label_placeholder: test_labels_one_hot})
+      tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(test_labels_dense, pred)
+      t3 = time.time()
+      logfile.write(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, t3-t2, target) + "\n")
+      print(format_str % (g_step, wd_ls, x_ls, 0, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, t3-t2, target))    
+
 
   logfile.write("eval ends at: %s\n" % datetime.datetime.now())
   logfile.close()
 
 
 if __name__ == "__main__":
-  #target_list = ["cdk2", "egfr_erbB1", "gsk3b", "hgfr", "map_k_p38a", "tpk_lck", "tpk_src", "vegfr2"]
-  target_list = ["gsk3b"]
+  target_list = ['CHEMBL203', 'CHEMBL204', 'CHEMBL205', 'CHEMBL214', 'CHEMBL217',
+               'CHEMBL218', 'CHEMBL220', 'CHEMBL224', 'CHEMBL225', 'CHEMBL226',
+               'CHEMBL228', 'CHEMBL230', 'CHEMBL233', 'CHEMBL234', 'CHEMBL235',
+               'CHEMBL236', 'CHEMBL237', 'CHEMBL240', 'CHEMBL244', 'CHEMBL251',
+               'CHEMBL253', 'CHEMBL256', 'CHEMBL259', 'CHEMBL260', 'CHEMBL261',
+               'CHEMBL264', 'CHEMBL267', 'CHEMBL279', 'CHEMBL284', 'CHEMBL2842',
+               'CHEMBL289', 'CHEMBL325', 'CHEMBL332', 'CHEMBL333', 'CHEMBL340',
+               'CHEMBL344', 'CHEMBL4005', 'CHEMBL4296', 'CHEMBL4722', 'CHEMBL4822']
 
-  d = pki.Datasets(target_list)
-
-  for target in target_list:
-    evaluate(d, target)
+  #for target in target_list:
+  target = target_list[0]
+  evaluate(target)
 
 
 
