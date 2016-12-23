@@ -104,6 +104,7 @@ fp_files/
 structure_files/
 txt_files/
 csv_files/
+mask_files/
 
 # cpkt files
 ckpt*/
@@ -116,4 +117,5 @@ tmp*/
 # edit temp files
 *~
 
-
+# rf model files
+*.m
