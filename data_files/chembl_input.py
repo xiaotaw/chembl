@@ -111,7 +111,7 @@ class Dataset(object):
     self.target_pns_features = sparse_features([self.pns_apfp[k] for k in self.pns_id], self.target_columns_dict, self.target_apfp_picked)[:, :-1]
     self.target_cns_features = sparse_features([self.chembl_apfp[k] for k in self.chembl_id], self.target_columns_dict, self.target_apfp_picked)[:, :-1]
     # time split
-    time_split_test = self.target_clf_label[self.target_clf_label["YEAR"]>2014]
+    time_split_test = self.target_clf_label[self.target_clf_label["YEAR"] > 2014]
     m = self.target_cns_mask.index.isin(time_split_test["CMPD_CHEMBLID"])
     self.target_cns_features_test = self.target_cns_features[m]
     self.target_cns_features_train = self.target_cns_features[~m]
@@ -156,7 +156,7 @@ class Dataset(object):
 
   def generate_train_batch(self, batch_size):
     perm = self.generate_perm_for_train_batch(batch_size)
-    return self.train_features[perm].toarray().astype(np.float32), self.train_labels[perm]
+    return self.train_features[perm].toarray().astype(np.float32), self.train_labels_one_hot[perm]
 
   def reset_begin_end(self):
     self.train_begin = 0
@@ -168,7 +168,7 @@ class Dataset(object):
     if self.train_end > self.train_size:
       self.train_end = self.train_size
     perm = self.train_perm[self.train_begin: self.train_end]
-    return self.train_features[perm].toarray().astype(np.float32), self.train_labels[perm]
+    return self.train_features[perm].toarray().astype(np.float32), self.train_labels_one_hot[perm]
 
   def reset_begin_end_cns(self):
     self.cns_begin = 0
@@ -222,7 +222,7 @@ def compute_performance(label, prediction):
   FP = APP - TP
   FN = ATP - TP
   TN = N - TP - FP - FN
-  SEN = float(TP) / (ATP)
+  SEN = float(TP) / (ATP) if ATP != 0 else np.nan
   SPE = float(TN) / (N - ATP)
   ACC = float(TP + TN) / N
   MCC = (TP * TN - FP * FN) / (np.sqrt(long(N - APP) * long(N - ATP) * APP * ATP)) if not (N - APP) * (N - ATP) * APP * ATP == 0 else 0.0
