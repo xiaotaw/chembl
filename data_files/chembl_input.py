@@ -70,10 +70,10 @@ class Dataset(object):
     Return:
       None
     """
-    # read top 40 targets' label
-    self.clf_label_40 = pd.read_csv(structure_dir + "/chembl_top40.label", usecols=[0, 2, 3, 4], delimiter="\t")
+    # read top 79 targets' label
+    self.clf_label_79 = pd.read_csv(structure_dir + "/chembl_top79.label", usecols=[0, 2, 3, 4], delimiter="\t")
     # read target's label
-    self.target_clf_label = self.clf_label_40[self.clf_label_40["TARGET_CHEMBLID"] == target]
+    self.target_clf_label = self.clf_label_79[self.clf_label_79["TARGET_CHEMBLID"] == target]
     # read chembl id and apfp
     self.chembl_id = []
     self.chembl_apfp = {}
