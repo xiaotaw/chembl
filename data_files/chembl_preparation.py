@@ -1,6 +1,6 @@
 # Author: xiaotaw@qq.com (Any bug report is welcome)
 # Time Created: Nov 2016
-# Time Last Updated: Nov 2016
+# Time Last Updated: Dec 2016
 # Addr: Shenzhen, China
 # Description: 1. clean chembl data,
 #              2. all molecules' smiles,
@@ -10,11 +10,16 @@ import os
 import numpy as np
 import pandas as pd
 
-# read all chembl bioactivity records
-chembl = pd.read_csv("txt_files/chembl_bioactivity_all.txt", delimiter="\t")
 
-if not os.path.exists("structure_files"):
-  os.mkdir("structure_files")
+txt_dir = "txt_files"
+structure_dir = "structure_files"
+if not os.path.exists(structure_dir):
+  os.mkdir(structure_dir)
+
+
+# read all chembl bioactivity records
+chembl = pd.read_csv(os.path.join(txt_dir, "chembl_bioactivity_all.txt"), delimiter="\t")
+
 
 # about smiles
 #
@@ -29,6 +34,7 @@ assert ss_str["CMPD_CHEMBLID"].isin(ss_nan["CMPD_CHEMBLID"]).sum() == 0
 m = chembl["CANONICAL_SMILES"].astype(str) != "nan"
 chembl = chembl[m]
 
+
 # there are still 400 duplicates, however it doesn't matter.
 #dup = ss_str[ss_str.duplicated(subset=["CANONICAL_SMILES"], keep=False)]
 #dup = dup.sort_values(by=["CANONICAL_SMILES"])
@@ -39,7 +45,7 @@ smiles.sort_values(by=["id_num"], inplace=True)
 smiles.reset_index(drop=True, inplace=True)
 smiles = smiles[["CMPD_CHEMBLID", "CANONICAL_SMILES"]]
 # save into files
-smiles.to_csv("structure_files/chembl.smiles", index=False)
+smiles.to_csv(os.path.join(structure_dir, "chembl.smiles"), index=False)
 
 
 # about classification(clf) labels
@@ -84,15 +90,18 @@ clf_label_all = grouped[["CLF_LABEL", "YEAR"]].mean()
 # inconclusive reocrds are removed
 clf_label = clf_label_all[(clf_label_all["CLF_LABEL"] > 0.5) | (clf_label_all["CLF_LABEL"] < -0.5)]
 # save into file
-clf_label.to_csv("structure_files/chembl.label", index=False, sep="\t")
+clf_label.to_csv(os.path.join(structure_dir, "chembl.label"), index=False, sep="\t")
 # sort target by number of records
 lss = clf_label.groupby(by=["TARGET_CHEMBLID", "PREF_NAME"], as_index=False).size()
+
+#lss_1 = clf_label.groupby(by=["TARGET_CHEMBLID"], as_index=False).size()
+
 lss.sort_values(ascending=False, inplace=True)
 
 
 target_list = lss[lss >= 3000].index
 clf_label_used = clf_label[clf_label["TARGET_CHEMBLID"].isin(target_list)]
-clf_label_used.to_csv("structure_files/chembl_top40.label", sep="\t", index=False)
+clf_label_used.to_csv(os.path.join(structure_dir, "chembl_top40.label"), sep="\t", index=False)
 
     
 
