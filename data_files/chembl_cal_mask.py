@@ -169,7 +169,7 @@ def sub_compare(sub_neg_id, sub_neg_features, conn):
 n_jobs = 6
 
 
-# for pns
+# using multiprocessing compute mask for pns
 t1 = time.time()
 date1 = datetime.datetime.now()
 
@@ -215,7 +215,7 @@ mask_file.close()
 print("generate mask for pns, duration: %.3f" % (t2 - t1))
 
 
-# for cns 
+# using multiprocessing compute mask for cns 
 t2 = time.time()
 date2 = datetime.datetime.now()
 
