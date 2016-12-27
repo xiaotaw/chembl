@@ -14,6 +14,16 @@ import numpy as np
 from scipy import sparse
 from collections import defaultdict
 
+# folders
+fp_dir = "fp_files"
+structure_dir = "structure_files"
+mask_dir = "mask_files"
+if not os.path.exists(mask_dir):
+  os.mkdir(mask_dir)
+log_dir = "log_files"
+if not os.path.exists(log_dir):
+  os.mkdir(log_dir)
+
 
 # the newly picked out 15 targets, include 9 targets from 5 big group, and 6 targets from others.
 target_list = ["CHEMBL279", "CHEMBL203", # Protein Kinases
@@ -30,7 +40,7 @@ target = target_list[int(sys.argv[1])]
 # read chembl id and apfp
 chembl_id = []
 chembl_apfp = {}
-f = open("fp_files/chembl.apfp", "r")
+f = open(os.path.join(fp_dir, "chembl.apfp"), "r")
 for line in f:
   id_, fps_str = line.split("\t")
   id_ = id_.strip()
@@ -44,7 +54,7 @@ f.close()
 pns_id = []
 pns_apfp = {}
 pns_count = defaultdict(lambda : 0)
-f = open("fp_files/pubchem_neg_sample.apfp", "r")
+f = open(os.path.join(fp_dir, "pubchem_neg_sample.apfp"), "r")
 for line in f:
   id_, fps_str = line.split("\t")
   id_ = id_.strip()
@@ -59,7 +69,7 @@ for line in f:
 f.close()
 
 # read top 79 targets' label
-clf_label_79 = np.genfromtxt("structure_files/chembl_top79.label", usecols=[0, 2, 3], delimiter="\t", skip_header=1, dtype=str)
+clf_label_79 = np.genfromtxt(os.path.join(structure_dir, "chembl_top79.label"), usecols=[0, 2, 3], delimiter="\t", skip_header=1, dtype=str)
 
 
 # generate sparse matrix for target features 
@@ -78,7 +88,7 @@ for fps_str in target_fps:
 target_count.update(pns_count)
 
 # save target apfp count 
-count_file = open("mask_files/%s_apfp.count" % target, "w")
+count_file = open(os.path.join(mask_dir, "%s_apfp.count" % target), "w")
 for k in target_count.keys():
   count_file.write("%d\t%d\n" % (k, target_count[k]))
 
@@ -123,9 +133,6 @@ target_chembl_features = sparse_features([chembl_apfp[k] for k in chembl_id])[:,
 
 
 # generate mask for pns and cns
-log_files = "log_files"
-if not os.path.exists(log_files):
-  os.mkdir(log_files)
 
 def sub_compare(sub_neg_id, sub_neg_features, conn):
   mask = {}
@@ -170,7 +177,7 @@ t2 = time.time()
 target_pns_mask = defaultdict(lambda : False)
 
 
-log = open(log_files + "/" + target + "_gen_pns_mask.log", "w")
+log = open(log_dir + "/" + target + "_gen_pns_mask.log", "w")
 log.write("%s generate mask for pubchem neg sample, begins at %s\n" % (target, str(date1)))
 
 for i in range(n_jobs):  
@@ -182,7 +189,7 @@ for i in range(n_jobs):
 log.write("generate mask for pns, duration: %.3f\n" % (t2 - t1))
 log.close()
 
-mask_file = open("mask_files/%s_pns.mask" % target, "w")
+mask_file = open(os.path.join(mask_dir, "%s_pns.mask" % target), "w")
 mask_file.writelines(["%s\t%s\n" % (x, target_pns_mask[x]) for x in pns_id])
 mask_file.close()
 
@@ -219,7 +226,7 @@ t3 = time.time()
 
 target_cns_mask = defaultdict(lambda : False)
 
-log = open(log_files + "/" + target + "_gen_cns_mask.log", "w")
+log = open(log_dir + "/" + target + "_gen_cns_mask.log", "w")
 log.write("%s generate mask for chembl neg sample, begins at %s\n" % (target, str(date2)))
 
 for i in range(n_jobs):  
@@ -231,7 +238,7 @@ for i in range(n_jobs):
 log.write("generate mask for cns, duration: %.3f\n" % (t3 - t2))
 log.close()
 
-mask_file = open("mask_files/%s_cns.mask" % target, "w")
+mask_file = open(os.path.join(mask_dir, "%s_cns.mask" % target), "w")
 mask_file.writelines(["%s\t%s\n" % (x, target_cns_mask[x]) for x in chembl_id])
 mask_file.close()
 
