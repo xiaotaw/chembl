@@ -53,7 +53,7 @@ def train(target, train_from = 0):
 
 
   # build dnn model and train
-  with tf.Graph().as_default(), tf.device('/gpu:3'):
+  with tf.Graph().as_default(), tf.device('/gpu:2'):
     # placeholders
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
@@ -75,7 +75,7 @@ def train(target, train_from = 0):
     saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=None)
     # start running operations on the Graph.
     config=tf.ConfigProto(allow_soft_placement=True)
-    config.gpu_options.per_process_gpu_memory_fraction = 0.9
+    config.gpu_options.per_process_gpu_memory_fraction = 0.6
     sess = tf.Session(config=config)
     # initialize all variables at first.
     sess.run(tf.initialize_all_variables())
@@ -96,19 +96,19 @@ def train(target, train_from = 0):
       # get a batch sample
       perm = d.generate_perm_for_train_batch(batch_size)
       compds_batch = d.train_features[perm].toarray()
-      labels_batch = d.train_labels_one_hot[perm]
-      labels_dense_batch = d.train_labels[perm]
+      labels_batch_one_hot = d.train_labels_one_hot[perm]
+      labels_batch_dense = d.train_labels[perm]
       t1 = time.time()
 
       # train once
-      _ = sess.run([train_op],feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch})
+      _ = sess.run([train_op],feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch_one_hot})
       t2 = time.time()
 
       # compute performance for the train batch
       if step % step_per_epoch == 0 or (step + 1) == max_step:
         g_step, wd_ls, x_ls, lr, pred = sess.run([global_step, wd_loss, x_entropy, learning_rate, tf.argmax(softmax, 1)],
-          feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch})
-        tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(labels_dense_batch, pred)
+          feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch_one_hot})
+        tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(labels_batch_dense, pred)
         t3 = float(time.time())    
         logfile.write(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, t1-t0, t2-t1, t3-t2, target) + "\n")
         print(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, t1-t0, t2-t1, t3-t2, target))      
@@ -120,10 +120,11 @@ def train(target, train_from = 0):
       # compute performance for the test data
       if step % (10 * step_per_epoch) == 0 or (step + 1) == max_step:
         compds_batch = d.test_features.toarray()
-        labels_batch = d.test_labels
+        labels_batch_one_hot = d.test_labels_one_hot
+        labels_batch_dense = d.test_labels
         x_ls, pred = sess.run([x_entropy, tf.argmax(softmax, 1)],
-          feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch})
-        tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(labels_dense_batch, pred)
+          feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch_one_hot})
+        tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(labels_batch_dense, pred)
         logfile.write(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, 0, target) + "\n")
         print(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, 0, target)) 
 
@@ -144,6 +145,6 @@ if __name__ == "__main__":
 
 
   #for target in target_list:
-  target = target_list[0]
+  target = target_list[1]
   train(target, train_from=0)
 
