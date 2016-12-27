@@ -1,5 +1,5 @@
-title: Protein kinase
-description: To build a DNN model for protein kinase target compound virtual screening
+title: ChEMBL Inhibitors
+description: Prediction of Potential Inhibitors for Targets(From ChEMBL), Based on Tensorflow
 google_analytics: 
 show_downloads: true
 theme: jekyll-theme-tactile
