@@ -61,7 +61,7 @@ target_list = ["CHEMBL279", "CHEMBL203", # Protein Kinases
 class Dataset(object):
   """Base dataset class 
   """
-  def __init__(self, target=target_list[0], one_hot=True):
+  def __init__(self, target=target_list[0], one_hot=True, is_shuffle_train=True):
     """Constructor, create a dataset container. 
     Args:
       size: <type 'int'> the number of samples
@@ -130,6 +130,8 @@ class Dataset(object):
     # batch related
     self.train_size = self.train_features.shape[0] # (954049, 9412)
     self.train_perm = np.array(range(self.train_size))
+    if is_shuffle_train:
+      np.random.shuffle(self.train_perm)
     self.train_begin = 0
     self.train_end = 0
 
