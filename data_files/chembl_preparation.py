@@ -92,9 +92,9 @@ clf_label = clf_label_all[(clf_label_all["CLF_LABEL"] > 0.5) | (clf_label_all["C
 # save into file
 clf_label.to_csv(os.path.join(structure_dir, "chembl.label"), index=False, sep="\t")
 # sort target by number of records
-lss = clf_label.groupby(by=["TARGET_CHEMBLID", "PREF_NAME"], as_index=False).size()
+#lss = clf_label.groupby(by=["TARGET_CHEMBLID", "PREF_NAME"], as_index=False).size()
 
-#lss_1 = clf_label.groupby(by=["TARGET_CHEMBLID"], as_index=False).size()
+lss = clf_label.groupby(by=["TARGET_CHEMBLID"], as_index=False).size()
 
 lss.sort_values(ascending=False, inplace=True)
 
