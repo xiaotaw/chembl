@@ -1,9 +1,14 @@
 # Abstract
 Author: xiaotaw@qq.com (Any bug report is welcome)
+
 Time Created: Aug 2016
+
 Time Updated: Dec 2016
+
 Addr: Shenzhen
+
 Description: We attempt to use machine learning to explore ChEMBL's Inhibitors
+
 Website: https://xiaotaw.github.io/chembl/
 
 
