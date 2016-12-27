@@ -3,7 +3,7 @@ Author: xiaotaw@qq.com (Any bug report is welcome)
 Time: Aug 2016
 Addr: Shenzhen
 Description: This is a deep neural network model, which predicts potential drugs for protein kinase targets. 
-Website: https://xiaotaw.github.io/protein_kinase/
+Website: https://xiaotaw.github.io/chembl/
 
 
 # Background
