@@ -104,7 +104,9 @@ clf_label_used = clf_label[clf_label["TARGET_CHEMBLID"].isin(target_list)]
 clf_label_used.to_csv(os.path.join(structure_dir, "chembl_top40.label"), sep="\t", index=False)
 
     
-
+target_list = lss[lss >= 2000].index
+clf_label_used = clf_label[clf_label["TARGET_CHEMBLID"].isin(target_list)]
+clf_label_used.to_csv(os.path.join(structure_dir, "chembl_top79.label"), sep="\t", index=False)
 
 
 
