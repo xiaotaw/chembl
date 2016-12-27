@@ -58,12 +58,12 @@ for line in f:
 
 f.close()
 
-# read top 40 targets' label
-clf_label_40 = np.genfromtxt("structure_files/chembl_top40.label", usecols=[0, 2, 3], delimiter="\t", skip_header=1, dtype=str)
+# read top 79 targets' label
+clf_label_79 = np.genfromtxt("structure_files/chembl_top79.label", usecols=[0, 2, 3], delimiter="\t", skip_header=1, dtype=str)
 
 
 # generate sparse matrix for target features 
-target_clf_label = clf_label_40[clf_label_40[:, 0] == target]
+target_clf_label = clf_label_79[clf_label_79[:, 0] == target]
 
 
 target_fps = [chembl_apfp[x] for x in target_clf_label[:, 1]]
