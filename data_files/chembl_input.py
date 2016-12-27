@@ -49,14 +49,14 @@ def sparse_features(fps_list, columns_dict, target_apfp_picked, is_log=True):
   a = sparse.csr_matrix((data, indices, indptr), shape=(len(fps_list), len(target_apfp_picked) + 1))
   return a
 
-target_list = ['CHEMBL203', 'CHEMBL204', 'CHEMBL205', 'CHEMBL214', 'CHEMBL217',
-               'CHEMBL218', 'CHEMBL220', 'CHEMBL224', 'CHEMBL225', 'CHEMBL226',
-               'CHEMBL228', 'CHEMBL230', 'CHEMBL233', 'CHEMBL234', 'CHEMBL235',
-               'CHEMBL236', 'CHEMBL237', 'CHEMBL240', 'CHEMBL244', 'CHEMBL251',
-               'CHEMBL253', 'CHEMBL256', 'CHEMBL259', 'CHEMBL260', 'CHEMBL261',
-               'CHEMBL264', 'CHEMBL267', 'CHEMBL279', 'CHEMBL284', 'CHEMBL2842',
-               'CHEMBL289', 'CHEMBL325', 'CHEMBL332', 'CHEMBL333', 'CHEMBL340',
-               'CHEMBL344', 'CHEMBL4005', 'CHEMBL4296', 'CHEMBL4722', 'CHEMBL4822']
+# the newly picked out 15 targets, include 9 targets from 5 big group, and 6 targets from others.
+target_list = ["CHEMBL279", "CHEMBL203", # Protein Kinases
+               "CHEMBL217", "CHEMBL253", # GPCRs (Family A)
+               "CHEMBL235", "CHEMBL206", # Nuclear Hormone Receptors
+               "CHEMBL240", "CHEMBL4296", # Voltage Gated Ion Channels
+               "CHEMBL4805", # Ligand Gated Ion Channels
+               "CHEMBL204", "CHEMBL244", "CHEMBL4822", "CHEMBL340", "CHEMBL205", "CHEMBL4005" # Others
+              ] 
 
 class Dataset(object):
   """Base dataset class 
