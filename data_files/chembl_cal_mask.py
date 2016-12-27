@@ -5,6 +5,7 @@
 # Description: calculate mask(label) of chembl molecules for specific targets
 
 import os
+import sys
 import math
 import time
 import datetime
@@ -14,14 +15,15 @@ from scipy import sparse
 from collections import defaultdict
 
 
-target_list = ['CHEMBL203', 'CHEMBL204', 'CHEMBL205', 'CHEMBL214', 'CHEMBL217',
-       'CHEMBL218', 'CHEMBL220', 'CHEMBL224', 'CHEMBL225', 'CHEMBL226',
-       'CHEMBL228', 'CHEMBL230', 'CHEMBL233', 'CHEMBL234', 'CHEMBL235',
-       'CHEMBL236', 'CHEMBL237', 'CHEMBL240', 'CHEMBL244', 'CHEMBL251',
-       'CHEMBL253', 'CHEMBL256', 'CHEMBL259', 'CHEMBL260', 'CHEMBL261',
-       'CHEMBL264', 'CHEMBL267', 'CHEMBL279', 'CHEMBL284', 'CHEMBL2842',
-       'CHEMBL289', 'CHEMBL325', 'CHEMBL332', 'CHEMBL333', 'CHEMBL340',
-       'CHEMBL344', 'CHEMBL4005', 'CHEMBL4296', 'CHEMBL4722', 'CHEMBL4822']
+# the newly picked out 15 targets, include 9 targets from 5 big group, and 6 targets from others.
+target_list = ["CHEMBL279", "CHEMBL203", # Protein Kinases
+               "CHEMBL217", "CHEMBL253", # GPCRs (Family A)
+               "CHEMBL235", "CHEMBL206", # Nuclear Hormone Receptors
+               "CHEMBL240", "CHEMBL4296", # Voltage Gated Ion Channels
+               "CHEMBL4805", # Ligand Gated Ion Channels
+               "CHEMBL204", "CHEMBL244", "CHEMBL4822", "CHEMBL340", "CHEMBL205", "CHEMBL4005" # Others
+              ] 
+
 
 # read chembl id and apfp
 chembl_id = []
@@ -59,7 +61,7 @@ clf_label_40 = np.genfromtxt("structure_files/chembl_top40.label", usecols=[0, 2
 
 
 # generate sparse matrix for target features 
-target = target_list[0]
+target = target_list[1]
 target_clf_label = clf_label_40[clf_label_40[:, 0] == target]
 
 
@@ -114,7 +116,7 @@ target_pos_id = target_clf_label[target_clf_label[:, 2].astype(float) > 0][:, 1]
 target_pos_fps = [chembl_apfp[x] for x in target_pos_id]
 target_pos_features = sparse_features(target_pos_fps)[:, :-1].toarray()
 
-#target_pns_features = sparse_features([pns_apfp[k] for k in pns_id])[:, :-1]
+target_pns_features = sparse_features([pns_apfp[k] for k in pns_id])[:, :-1]
 
 target_chembl_features = sparse_features([chembl_apfp[k] for k in chembl_id])[:, :-1]
 
@@ -139,7 +141,6 @@ n_jobs = 6
 
 
 # for pns
-"""
 t1 = time.time()
 date1 = datetime.datetime.now()
 
@@ -186,7 +187,6 @@ mask_file.close()
 
 
 print("generate mask for pns, duration: %.3f" % (t2 - t1))
-"""
 
 
 
