@@ -24,6 +24,8 @@ target_list = ["CHEMBL279", "CHEMBL203", # Protein Kinases
                "CHEMBL204", "CHEMBL244", "CHEMBL4822", "CHEMBL340", "CHEMBL205", "CHEMBL4005" # Others
               ] 
 
+# the target
+target = target_list[int(sys.argv[1])]
 
 # read chembl id and apfp
 chembl_id = []
@@ -61,7 +63,6 @@ clf_label_40 = np.genfromtxt("structure_files/chembl_top40.label", usecols=[0, 2
 
 
 # generate sparse matrix for target features 
-target = target_list[1]
 target_clf_label = clf_label_40[clf_label_40[:, 0] == target]
 
 
