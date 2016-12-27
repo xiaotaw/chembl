@@ -2,7 +2,7 @@ title: ChEMBL Inhibitors
 description: Prediction of Potential Inhibitors for Targets(From ChEMBL), Based on Tensorflow
 google_analytics: 
 show_downloads: true
-theme: jekyll-theme-cayman
+theme: jekyll-theme-tactile
 
 gems:
   - jekyll-mentions
