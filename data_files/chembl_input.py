@@ -5,12 +5,13 @@
 # Description:
 
 import os
+import getpass
 import numpy as np
 import pandas as pd
 from scipy import sparse
 from collections import defaultdict
 
-data_dir = "/home/scw4750/Documents/chembl/data_files/"
+data_dir = "/home/%s/Documents/chembl/data_files/" % getpass.getuser()
 fp_dir = os.path.join(data_dir, "fp_files")
 mask_dir = os.path.join(data_dir, "mask_files")
 structure_dir = os.path.join(data_dir, "structure_files")

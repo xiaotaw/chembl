@@ -11,10 +11,11 @@ from __future__ import print_function
 import os
 import sys
 import time
+import getpass
 import datetime
 import tensorflow as tf
 
-sys.path.append("/home/scw4750/Documents/chembl/data_files/")
+sys.path.append("/home/%s/Documents/chembl/data_files/" % getpass.getuser())
 import pk_model
 import chembl_input as ci
 
