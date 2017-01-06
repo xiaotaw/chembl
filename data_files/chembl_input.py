@@ -123,6 +123,7 @@ class Dataset(object):
     self.train_labels = np.hstack([self.target_cns_mask_train, self.target_pns_mask]).astype(int)
     # test
     self.test_features = self.target_cns_features_test
+    self.test_features_dense = self.test_features.toarray()
     self.test_labels = self.target_cns_mask_test.values.astype(int)
     # one_hot
     if one_hot:
@@ -212,6 +213,7 @@ class DatasetVS(object):
     f.close()
     # generate features
     self.features = sparse_features([self.pubchem_apfp[k] for k in self.pubchem_id], self.target_columns_dict, self.target_apfp_picked)[:, :-1]
+    self.features_dense = self.features.toarray()
 
 
 def compute_performance(label, prediction):
