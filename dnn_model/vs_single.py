@@ -27,7 +27,7 @@ def virtual_screening_single(target, part_num):
   t_0 = time.time()
 
   # dataset
-  d = ci.DatasetVS()
+  d = ci.DatasetVS(target)
   # batch size
   batch_size = 128
   # input vec_len
@@ -37,7 +37,7 @@ def virtual_screening_single(target, part_num):
   # weight decay
   wd = 0.004
   # g_step
-  g_step = 2161371 
+  g_step = 2236500 
 
   # virtual screen log file
   log_dir = "log_files"
@@ -56,7 +56,7 @@ def virtual_screening_single(target, part_num):
 
   # screening
   #with tf.Graph().as_default(), tf.device("/gpu:%d" % (part_num // 2)):
-  with tf.Graph().as_default(), tf.device("/gpu:%d" % 3):
+  with tf.Graph().as_default(), tf.device("/gpu:%d" % (part_num % 4)):
     # the input
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
 
@@ -86,13 +86,19 @@ def virtual_screening_single(target, part_num):
           continue
 
         d.reset(fp_fn)
-        compds = d.features.toarray()
+        compds = d.features_dense
 
-        pred = sess.run(tf.argmax(softmax, 1), feed_dict = {input_placeholder: compds})
+        #pred = sess.run(tf.argmax(softmax, 1), feed_dict = {input_placeholder: compds})
+        sm = sess.run(softmax, feed_dict = {input_placeholder: compds})
+        
+        for id_, sm_v in zip(d.pubchem_id, sm[:, 1]):
+          logfile.writelines("%s\t%f\n" % (id_, sm_v))
+        
+        print("%s\t%d\n" % (fp_fn, len(d.pubchem_id)))
 
-        result = np.array(d.pubchem_id)[pred.astype(bool)]
-        logfile.writelines(["%s\n" % x for x in result])
-        print("%s\t%d\n" % (fp_fn, result.shape[0]))
+        #result = np.array(d.pubchem_id)[pred.astype(bool)]
+        #logfile.writelines(["%s\n" % x for x in result])
+        #print("%s\t%d\n" % (fp_fn, result.shape[0]))
 
 
   print("duration: %.3f" % (time.time() - t_0))
@@ -109,8 +115,9 @@ if __name__ == "__main__":
                'CHEMBL344', 'CHEMBL4005', 'CHEMBL4296', 'CHEMBL4722', 'CHEMBL4822']
 
   # the target
-  target = target_list[0]
+  target = "CHEMBL204"
 
+  # part_num range from 0 to 12(included)
   virtual_screening_single(target, int(sys.argv[1]))
 
 
