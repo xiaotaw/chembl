@@ -119,3 +119,7 @@ tmp*/
 
 # rf model files
 *.m
+
+# excel xlsx files
+*.xlsx
+
