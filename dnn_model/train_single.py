@@ -54,7 +54,7 @@ def train(target, train_from = 0):
 
 
   # build dnn model and train
-  with tf.Graph().as_default(), tf.device('/gpu:2'):
+  with tf.Graph().as_default(), tf.device('/gpu:0'):
     # placeholders
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
@@ -120,12 +120,12 @@ def train(target, train_from = 0):
 
       # compute performance for the test data
       if step % (10 * step_per_epoch) == 0 or (step + 1) == max_step:
-        compds_batch = d.test_features.toarray()
-        labels_batch_one_hot = d.test_labels_one_hot
-        labels_batch_dense = d.test_labels
+        test_compds_batch = d.test_features_dense
+        test_labels_batch_one_hot = d.test_labels_one_hot
+        test_labels_batch_dense = d.test_labels
         x_ls, pred = sess.run([x_entropy, tf.argmax(softmax, 1)],
-          feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch_one_hot})
-        tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(labels_batch_dense, pred)
+          feed_dict = {input_placeholder: test_compds_batch, label_placeholder: test_labels_batch_one_hot})
+        tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(test_labels_batch_dense, pred)
         logfile.write(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, 0, target) + "\n")
         print(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, 0, target)) 
 
@@ -135,16 +135,13 @@ def train(target, train_from = 0):
 if __name__ == "__main__":
 
   # the newly picked out 15 targets, include 9 targets from 5 big group, and 6 targets from others.
-  target_list = ["CHEMBL279", "CHEMBL203", # Protein Kinases
-               "CHEMBL217", "CHEMBL253", # GPCRs (Family A)
-               "CHEMBL235", "CHEMBL206", # Nuclear Hormone Receptors
-               "CHEMBL240", "CHEMBL4296", # Voltage Gated Ion Channels
+  target_list = ["CHEMBL279", 
                "CHEMBL4805", # Ligand Gated Ion Channels
-               "CHEMBL204", "CHEMBL244", "CHEMBL4822", "CHEMBL340", "CHEMBL205", "CHEMBL4005" # Others
+               "CHEMBL244", "CHEMBL4822", "CHEMBL340", "CHEMBL205", "CHEMBL4005" # Others
               ] 
 
 
   #for target in target_list:
-  target = sys.argv[1]
+  target = target_list[-1]
   train(target, train_from=0)
 
