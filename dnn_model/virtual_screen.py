@@ -1,7 +1,7 @@
-#!/usr/bin/python
 # Author: xiaotaw@qq.com (Any bug report is welcome)
-# Time: Aug 2016
-# Addr: Shenzhen
+# Time Created: Aug 2016
+# Time Last Updated: Oct 2016
+# Addr: Shenzhen, China
 # Description: apply pk model to pubchem dataset, to screen potential active substrate(drugs)
 
 from __future__ import absolute_import
