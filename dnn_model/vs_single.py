@@ -23,6 +23,9 @@ sys.path.append("/home/scw4750/Documents/chembl/data_files/")
 import chembl_input as ci
 
 
+
+
+
 def virtual_screening_single(target, part_num):
   t_0 = time.time()
 
@@ -39,12 +42,12 @@ def virtual_screening_single(target, part_num):
   # g_step
   g_step = 2236500 
 
-  # virtual screen log file
-  log_dir = "log_files"
-  if not os.path.exists(log_dir):
-    os.mkdir(log_dir)
-  log_path = os.path.join(log_dir, "vs_%s_%d_%4.3f_%4.3e_%d.log" % (target, batch_size, keep_prob, wd, part_num))
-  logfile = open(log_path, 'w')
+  # virtual screen pred file
+  pred_dir = "pred_files/%s" % target
+  if not os.path.exists(pred_dir):
+    os.makedirs(pred_dir)
+  pred_path = os.path.join(pred_dir, "vs_pubchem_%s_%d_%4.3f_%4.3e_%d_%d.pred" % (target, batch_size, keep_prob, wd, g_step, part_num))
+  predfile = open(pred_path, 'w')
   print("virtual screen %d starts at: %s\n" % (part_num, datetime.datetime.now()))
 
   # checkpoint file
@@ -55,8 +58,8 @@ def virtual_screening_single(target, part_num):
   fp_dir = "/raid/xiaotaw/pubchem/fp_files/%d" % part_num
 
   # screening
-  #with tf.Graph().as_default(), tf.device("/gpu:%d" % (part_num // 2)):
-  with tf.Graph().as_default(), tf.device("/gpu:%d" % (part_num % 4)):
+  with tf.Graph().as_default(), tf.device("/gpu: 3"):
+  #with tf.Graph().as_default(), tf.device("/gpu:%d" % (part_num % 4)):
     # the input
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
 
@@ -76,9 +79,7 @@ def virtual_screening_single(target, part_num):
       # Restores variables from checkpoint
       saver.restore(sess, ckpt_path + "-%d" % g_step)
 
-      
       for i in xrange(part_num * 10000000 + 1, (part_num + 1) * 10000000, 25000):
-      #for i in xrange(10000001, 12000001, 25000):
         in_file = "Compound_" + "{:0>9}".format(i) + "_" + "{:0>9}".format(i + 24999) + ".apfp"
         fp_fn = os.path.join(fp_dir, in_file)
         if not os.path.exists(fp_fn):
@@ -88,31 +89,27 @@ def virtual_screening_single(target, part_num):
         d.reset(fp_fn)
         compds = d.features_dense
 
-        #pred = sess.run(tf.argmax(softmax, 1), feed_dict = {input_placeholder: compds})
         sm = sess.run(softmax, feed_dict = {input_placeholder: compds})
         
         for id_, sm_v in zip(d.pubchem_id, sm[:, 1]):
-          logfile.writelines("%s\t%f\n" % (id_, sm_v))
+          predfile.writelines("%s\t%f\n" % (id_, sm_v))
         
         print("%s\t%d\n" % (fp_fn, len(d.pubchem_id)))
 
-        #result = np.array(d.pubchem_id)[pred.astype(bool)]
-        #logfile.writelines(["%s\n" % x for x in result])
-        #print("%s\t%d\n" % (fp_fn, result.shape[0]))
 
 
   print("duration: %.3f" % (time.time() - t_0))
 
 
 if __name__ == "__main__":
-  target_list = ['CHEMBL203', 'CHEMBL204', 'CHEMBL205', 'CHEMBL214', 'CHEMBL217',
-               'CHEMBL218', 'CHEMBL220', 'CHEMBL224', 'CHEMBL225', 'CHEMBL226',
-               'CHEMBL228', 'CHEMBL230', 'CHEMBL233', 'CHEMBL234', 'CHEMBL235',
-               'CHEMBL236', 'CHEMBL237', 'CHEMBL240', 'CHEMBL244', 'CHEMBL251',
-               'CHEMBL253', 'CHEMBL256', 'CHEMBL259', 'CHEMBL260', 'CHEMBL261',
-               'CHEMBL264', 'CHEMBL267', 'CHEMBL279', 'CHEMBL284', 'CHEMBL2842',
-               'CHEMBL289', 'CHEMBL325', 'CHEMBL332', 'CHEMBL333', 'CHEMBL340',
-               'CHEMBL344', 'CHEMBL4005', 'CHEMBL4296', 'CHEMBL4722', 'CHEMBL4822']
+  # the newly picked out 15 targets, include 9 targets from 5 big group, and 6 targets from others.
+  target_list = ["CHEMBL279", "CHEMBL203", # Protein Kinases
+               "CHEMBL217", "CHEMBL253", # GPCRs (Family A)
+               "CHEMBL235", "CHEMBL206", # Nuclear Hormone Receptors
+               "CHEMBL240", "CHEMBL4296", # Voltage Gated Ion Channels
+               "CHEMBL4805", # Ligand Gated Ion Channels
+               "CHEMBL204", "CHEMBL244", "CHEMBL4822", "CHEMBL340", "CHEMBL205", "CHEMBL4005" # Others
+              ] 
 
   # the target
   target = "CHEMBL204"
