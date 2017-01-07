@@ -47,7 +47,7 @@ def dense_to_one_hot(labels_dense, num_classes=2, dtype=np.int):
 class Dataset(object):
   """Base dataset class for chembl inhibitors
   """
-  def __init__(self, target, one_hot=True, is_shuffle_train=True, year_split=2014):
+  def __init__(self, target, one_hot=True, is_shuffle_train=True, year_split=2014, train_pos_multiply=0):
     """Constructor, create a dataset container. 
     Args:
       target: <type 'str'> the chemblid of the target, e.g. "CHEMBL203".
@@ -109,9 +109,17 @@ class Dataset(object):
     self.target_cns_features_train = self.target_cns_features[~m]
     self.target_cns_mask_test = self.target_cns_mask[m]
     self.target_cns_mask_train = self.target_cns_mask[~m]
-    # train 
-    self.train_features = sparse.vstack([self.target_cns_features_train, self.target_pns_features])
-    self.train_labels = np.hstack([self.target_cns_mask_train, self.target_pns_mask]).astype(int)
+    # cns train pos 
+    self.target_cns_features_train_pos = self.target_cns_features_train[self.target_cns_mask_train.values]
+    self.target_cns_mask_train_pos = self.target_cns_mask_train[self.target_cns_mask_train.values]
+    # train, if train_pos_multiply > 0, cns_train_pos will be extra added for train_pos_multiply times .
+    tf_list = [self.target_cns_features_train, self.target_pns_features]
+    tl_list = [self.target_cns_mask_train, self.target_pns_mask]
+    for _ in range(train_pos_multiply):
+      tf_list.append(self.target_cns_features_train_pos)
+      tl_list.append(self.target_cns_mask_train_pos)
+    self.train_features = sparse.vstack(tf_list)
+    self.train_labels = np.hstack(tl_list).astype(int)
     # test
     self.test_features = self.target_cns_features_test
     self.test_features_dense = self.test_features.toarray()
