@@ -99,6 +99,10 @@ ENV/
 log_files/
 *.log
 
+# pred files
+pred_files/
+*.pred
+
 # data files
 fp_files/
 structure_files/
