@@ -79,6 +79,15 @@ def cal_mask(target):
   # target compounds' chembl_id and clf label.
   target_clf_label = clf_label_79[clf_label_79[:, 0] == target]
 
+  # remove compounds whose apfp cannot be caculated
+  m = []
+  for cmpd_id in target_clf_label[:, 1]:
+    if cmpd_id in chembl_id:
+      m.append(True)
+    else:
+      m.append(False)
+  target_clf_label = target_clf_label[np.array(m)]  
+
   # target fps
   target_fps = [chembl_apfp[x] for x in target_clf_label[:, 1]]
 
@@ -270,4 +279,4 @@ target_list = [
 
 #for target in target_list:
 #  cal_mask(target)
-cal_mask("CHEMBL4005")
+cal_mask("CHEMBL205")
