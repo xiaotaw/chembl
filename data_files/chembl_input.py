@@ -85,6 +85,9 @@ class Dataset(object):
       self.pns_id.append(id_)
       self.pns_apfp[id_] = fps_str                
     f.close()
+    # remove compounds whose apfp cannot be caculated
+    m = self.target_clf_label["CMPD_CHEMBLID"].isin(chembl_id)
+    self.target_clf_label = self.target_clf_label[m.values]  
     # read mask
     self.target_pns_mask = pd.Series.from_csv(mask_dir + "/%s_pns.mask" % target, header=None, sep="\t")
     self.target_cns_mask = pd.Series.from_csv(mask_dir + "/%s_cns.mask" % target, header=None, sep="\t")
@@ -103,8 +106,9 @@ class Dataset(object):
     self.target_pns_features = self.sparse_features([self.pns_apfp[k] for k in self.pns_id])[:, :-1]
     self.target_cns_features = self.sparse_features([self.chembl_apfp[k] for k in self.chembl_id])[:, :-1]
     # time split
-    time_split_test = self.target_clf_label[self.target_clf_label["YEAR"] > year_split]
-    m = self.target_cns_mask.index.isin(time_split_test["CMPD_CHEMBLID"])
+    self.time_split_test = self.target_clf_label[self.target_clf_label["YEAR"] > year_split]
+    self.time_split_train = self.target_clf_label[self.target_clf_label["YEAR"] <= year_split]    
+    m = self.target_cns_mask.index.isin(self.time_split_test["CMPD_CHEMBLID"])
     self.target_cns_features_test = self.target_cns_features[m]
     self.target_cns_features_train = self.target_cns_features[~m]
     self.target_cns_mask_test = self.target_cns_mask[m]
