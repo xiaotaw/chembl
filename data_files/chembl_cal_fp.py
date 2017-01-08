@@ -30,7 +30,7 @@ def str_2_dict(fps_str):
 
 ## calculate chembl apfp
 #
-sup = Chem.SmilesMolSupplier("structure_files/chembl.smiles", delimiter="\t", smilesColumn=1, nameColumn=0, titleLine=True)
+sup = Chem.SmilesMolSupplier("structure_files/chembl.smiles", delimiter=",", smilesColumn=1, nameColumn=0, titleLine=True)
 
 if not os.path.exists("fp_files"):
   os.mkdir("fp_files")
