@@ -17,6 +17,7 @@ import numpy as np
 import datetime
 import tensorflow as tf
 from scipy import sparse
+from matplotlib import pyplot as plt
 
 import pk_model
 sys.path.append("/home/scw4750/Documents/chembl/data_files/")
@@ -177,9 +178,33 @@ def predict(target, g_step_list=None):
       train_pred_file.close()
 
 
+def analyse(target, g_step):
+  vs_pred_file = "pred_files/%s/vs_pubchem_%s_128_0.800_4.000e-03_%d.pred" % (target, target, g_step)
+  aa = np.genfromtxt(vs_pred_file, delimiter="\t")
+  a = aa[:, 1]
+
+  test_pred_file = "pred_files/%s/test_%s_128_0.800_4.000e-03_%d.pred" % (target, target, g_step)
+  bb = np.genfromtxt(test_pred_file, delimiter="\t", usecols=[1,2])
+
+  b = bb[:, 0][bb[:, 1].astype(bool)]
+
+  x = []
+  y = []
+  for i in range(10):
+    mark = (i + 1) / 20.0
+    xi = 1.0 * (b > mark).sum() / b.shape[0]
+    yi = (a > mark).sum()
+    x.append(xi)
+    y.append(yi)
+
+  plt.plot(x, y, "*")
+  plt.xlabel("pos yeild rate")
+  plt.ylabel("vs pubchem false pos")
+
+  plt.savefig("pred_files/%s/%d.png" % (target, g_step))
 
 
-
+  
 
 
 if __name__ == "__main__":
