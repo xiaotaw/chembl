@@ -62,43 +62,124 @@ def virtual_screening_single(target, part_num):
   #with tf.Graph().as_default(), tf.device("/gpu:%d" % (part_num % 4)):
     # the input
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
-
     # the term
     base = pk_model.term(input_placeholder, in_units=input_vec_len, wd=wd, keep_prob=1.0)
-
     # the branches
     softmax = pk_model.branch(target, base, wd=wd, keep_prob=1.0)
-
     # create a saver.
     saver = tf.train.Saver(tf.trainable_variables())
-
     # Start screen
     config=tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.per_process_gpu_memory_fraction = 0.35
     with tf.Session(config=config) as sess:
       # Restores variables from checkpoint
       saver.restore(sess, ckpt_path + "-%d" % g_step)
-
       for i in xrange(part_num * 10000000 + 1, (part_num + 1) * 10000000, 25000):
         in_file = "Compound_" + "{:0>9}".format(i) + "_" + "{:0>9}".format(i + 24999) + ".apfp"
         fp_fn = os.path.join(fp_dir, in_file)
         if not os.path.exists(fp_fn):
           print("%s not exists" % fp_fn)
           continue
-
         d.reset(fp_fn)
         compds = d.features_dense
-
         sm = sess.run(softmax, feed_dict = {input_placeholder: compds})
-        
         for id_, sm_v in zip(d.pubchem_id, sm[:, 1]):
           predfile.writelines("%s\t%f\n" % (id_, sm_v))
-        
         print("%s\t%d\n" % (fp_fn, len(d.pubchem_id)))
 
-
-
   print("duration: %.3f" % (time.time() - t_0))
+
+
+
+def predict(target, g_step_list=None):
+  """ evaluate the model 
+  """
+  # dataset
+  d = ci.Dataset(target)
+  # batch size
+  batch_size = 128
+  # learning rate 
+  step_per_epoch = int(d.train_size / batch_size)
+  # input vec_len
+  input_vec_len = d.train_features.shape[1]
+  # keep prob
+  keep_prob = 0.8
+  # weight decay
+  wd = 0.004
+  # checkpoint file
+  ckpt_dir = "ckpt_files/%s" % target
+  ckpt_path = os.path.join(ckpt_dir, '%d_%4.3f_%4.3e.ckpt' % (batch_size, keep_prob, wd))
+  # pred file
+  pred_dir = "pred_files/%s" % target
+  if not os.path.exists(pred_dir):
+    os.makedirs(pred_dir)
+  
+  # g_step_list
+  g_step_list = range(1, 2235900, 10 * step_per_epoch)
+  g_step_list = [2161371]
+
+  with tf.Graph().as_default(), tf.device("/gpu:3"):
+    
+    # build the model
+    input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
+    label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
+    # build the "Tree" with a mutual "Term" and several "Branches"
+    base = pk_model.term(input_placeholder, in_units=input_vec_len, wd=wd, keep_prob=1.0)
+    # compute softmax
+    softmax = pk_model.branch(target, base, wd=wd, keep_prob=1.0)
+    # compute loss.
+    wd_loss = tf.add_n(tf.get_collection("term_wd_loss") + tf.get_collection(target+"_wd_loss"))
+    x_entropy = pk_model.x_entropy(softmax, label_placeholder, target)
+    loss  = tf.add(wd_loss, x_entropy)
+    # create a saver.
+    saver = tf.train.Saver(tf.trainable_variables())
+    # create session.
+    config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+    config.gpu_options.per_process_gpu_memory_fraction = 0.9
+    sess = tf.Session(config=config)
+
+    # target test
+    test_chemblid = d.time_split_test["CMPD_CHEMBLID"]
+    test_compds = d.test_features.toarray()
+    test_labels_dense = d.test_labels
+
+    # target train
+    time_split_train = d.target_clf_label[d.target_clf_label["YEAR"] <= 2014]
+    target_train_chemblid = time_split_train["CMPD_CHEMBLID"]
+    m = d.target_cns_mask.index.isin(time_split_train["CMPD_CHEMBLID"])
+    target_train_features = d.target_cns_features[m].toarray()
+    target_train_labels_dense = d.target_cns_mask[m].values.astype(int)
+
+    for g_step in g_step_list:
+      # Restores variables from checkpoint
+      saver.restore(sess, ckpt_path + "-%d" % g_step)
+
+      # the target's test
+      sm = sess.run(softmax, feed_dict = {input_placeholder: test_compds})
+
+      test_pred_path = os.path.join(pred_dir, "test_%s_%d_%4.3f_%4.3e_%d.pred" % (target, batch_size, keep_prob, wd, g_step))
+      test_pred_file = open(test_pred_path, 'w')
+
+      for id_, sm_v, l_v in zip(test_chemblid, sm[:, 1], test_labels_dense):
+        test_pred_file.writelines("%s\t%f\t%f\n" % (id_, sm_v, l_v))
+
+      test_pred_file.close()
+
+      # the target's train
+      sm = sess.run(softmax, feed_dict = {input_placeholder: target_train_features})
+
+      train_pred_path = os.path.join(pred_dir, "train_%s_%d_%4.3f_%4.3e_%d.pred" % (target, batch_size, keep_prob, wd, g_step))
+      train_pred_file = open(train_pred_path, 'w')
+
+      for id_, sm_v, l_v in zip(target_train_chemblid, sm[:, 1], target_train_labels_dense):
+        train_pred_file.writelines("%s\t%f\t%f\n" % (id_, sm_v, l_v))
+
+      train_pred_file.close()
+
+
+
+
+
 
 
 if __name__ == "__main__":
@@ -112,10 +193,12 @@ if __name__ == "__main__":
               ] 
 
   # the target
-  target = "CHEMBL204"
+  target = "CHEMBL203"
 
   # part_num range from 0 to 12(included)
-  virtual_screening_single(target, int(sys.argv[1]))
+  #virtual_screening_single(target, int(sys.argv[1]))
+
+  predict(target)
 
 
 
