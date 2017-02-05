@@ -86,7 +86,7 @@ class Dataset(object):
       self.pns_apfp[id_] = fps_str                
     f.close()
     # remove compounds whose apfp cannot be caculated
-    m = self.target_clf_label["CMPD_CHEMBLID"].isin(chembl_id)
+    m = self.target_clf_label["CMPD_CHEMBLID"].isin(self.chembl_id)
     self.target_clf_label = self.target_clf_label[m.values]  
     # read mask
     self.target_pns_mask = pd.Series.from_csv(mask_dir + "/%s_pns.mask" % target, header=None, sep="\t")
