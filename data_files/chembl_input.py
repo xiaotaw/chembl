@@ -42,6 +42,33 @@ def dense_to_one_hot(labels_dense, num_classes=2, dtype=np.int):
   return labels_one_hot
 
 
+def sparse_features(fps_list, target_columns_dict, num_features, is_log=True):
+  """construct a sparse matrix(csr_matrix) for features according to target_columns_dict.
+  Args:
+    fps_list: <type 'list'> a list of apfps for the molecules
+    is_log: <type 'bool'> flag whether apply np.log to data, default is True
+  Return:
+    features: the sparse matrix of features
+  """
+  data = []
+  indices = []
+  indptr = [0]
+  for fps_str in fps_list:
+    n = indptr[-1]
+    for fp in fps_str[1:-1].split(","):
+      if ":" in fp:
+        k, v = fp.split(":")
+        indices.append(target_columns_dict[int(k)])
+        data.append(int(v))
+        n += 1
+    indptr.append(n)
+  data = np.array(data)
+  if is_log:
+    data = np.log(data).astype(np.float32)
+  # here we add one to num_features, because any apfp not founded in target_apfp_picked will be mapped
+  # to the last column of the features matrix, though the last column will not be used ultimately.
+  features = sparse.csr_matrix((data, indices, indptr), shape=(len(fps_list), num_features + 1))
+  return features
 
 
 class Dataset(object):
@@ -103,8 +130,8 @@ class Dataset(object):
     for i, apfp in enumerate(self.target_apfp_picked):
       self.target_columns_dict[apfp] = i
     # generate features
-    self.target_pns_features = self.sparse_features([self.pns_apfp[k] for k in self.pns_id])[:, :-1]
-    self.target_cns_features = self.sparse_features([self.chembl_apfp[k] for k in self.chembl_id])[:, :-1]
+    self.target_pns_features = sparse_features([self.pns_apfp[k] for k in self.pns_id], self.target_columns_dict, self.num_features)[:, :-1]
+    self.target_cns_features = sparse_features([self.chembl_apfp[k] for k in self.chembl_id], self.target_columns_dict, self.num_features)[:, :-1]
     # time split
     self.time_split_test = self.target_clf_label[self.target_clf_label["YEAR"] > year_split]
     self.time_split_train = self.target_clf_label[self.target_clf_label["YEAR"] <= year_split]    
@@ -144,36 +171,6 @@ class Dataset(object):
     self.cns_perm = np.arange(self.cns_size)
     self.cns_begin = 0
     self.cns_end = 0
-
-
-  def sparse_features(self, fps_list, is_log=True):
-    """construct a sparse matrix(csr_matrix) for features according to target_columns_dict.
-    Args:
-      fps_list: <type 'list'> a list of apfps for the molecules
-      is_log: <type 'bool'> flag whether apply np.log to data, default is True
-    Return:
-      features: the sparse matrix of features
-    """
-    data = []
-    indices = []
-    indptr = [0]
-    for fps_str in fps_list:
-      n = indptr[-1]
-      for fp in fps_str[1:-1].split(","):
-        if ":" in fp:
-          k, v = fp.split(":")
-          indices.append(self.target_columns_dict[int(k)])
-          data.append(int(v))
-          n += 1
-      indptr.append(n)
-    data = np.array(data)
-    if is_log:
-      data = np.log(data).astype(np.float32)
-    # here we add one to num_features, because any apfp not founded in target_apfp_picked will be mapped
-    # to the last column of the features matrix, though the last column will not be used ultimately.
-    features = sparse.csr_matrix((data, indices, indptr), shape=(len(fps_list), self.num_features + 1))
-    return features
-
 
   def generate_perm_for_train_batch(self, batch_size):
     """Create the permutation for a batch of train samples
@@ -233,34 +230,6 @@ class DatasetVS(object):
     for i, apfp in enumerate(self.target_apfp_picked):
       self.target_columns_dict[apfp] = i
 
-  def sparse_features(self, fps_list, is_log=True):
-    """construct a sparse matrix(csr_matrix) for features according to target_columns_dict.
-    Args:
-      fps_list: <type 'list'> a list of apfps for the molecules
-      is_log: <type 'bool'> flag whether apply np.log to data, default is True
-    Return:
-      features: the sparse matrix of features
-    """
-    data = []
-    indices = []
-    indptr = [0]
-    for fps_str in fps_list:
-      n = indptr[-1]
-      for fp in fps_str[1:-1].split(","):
-        if ":" in fp:
-          k, v = fp.split(":")
-          indices.append(self.target_columns_dict[int(k)])
-          data.append(int(v))
-          n += 1
-      indptr.append(n)
-    data = np.array(data)
-    if is_log:
-      data = np.log(data).astype(np.float32)
-    # here we add one to num_features, because any apfp not founded in target_apfp_picked will be mapped
-    # to the last column of the features matrix, though the last column will not be used ultimately.
-    features = sparse.csr_matrix((data, indices, indptr), shape=(len(fps_list), self.num_features + 1))
-    return features
-
   def reset(self, fp_fn):
     # read chembl id and apfp
     self.pubchem_id = []
@@ -274,7 +243,7 @@ class DatasetVS(object):
       self.pubchem_apfp[id_] = fps_str
     f.close()
     # generate features
-    self.features = self.sparse_features([self.pubchem_apfp[k] for k in self.pubchem_id])[:, :-1]
+    self.features = sparse_features([self.pubchem_apfp[k] for k in self.pubchem_id], self.target_columns_dict, self.num_features)[:, :-1]
     self.features_dense = self.features.toarray()
 
 
