@@ -25,7 +25,7 @@ target_list = ['CHEMBL203', 'CHEMBL204', 'CHEMBL205', 'CHEMBL214', 'CHEMBL217',
                'CHEMBL344', 'CHEMBL4005', 'CHEMBL4296', 'CHEMBL4722', 'CHEMBL4822']
 
 # the target
-target = target_list[0]
+target = "CHEMBL205"
 
 # read count and the apfps that were picked out 
 counts = np.genfromtxt(mask_files + "/%s_apfp.count" % target, delimiter="\t", dtype=int)

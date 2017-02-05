@@ -60,7 +60,7 @@ f.close()
 clf_label_40 = pd.read_csv(structure_files + "/chembl_top40.label", usecols=[0, 2, 3, 4], delimiter="\t")
 
 # the target 
-target = target_list[0]
+target = "CHEMBL205"
 target_clf_label = clf_label_40[clf_label_40["TARGET_CHEMBLID"] == target]
 
 

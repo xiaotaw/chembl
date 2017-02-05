@@ -23,7 +23,7 @@ import chembl_input as ci
 def train(target, train_from = 0):
   """"""
   # dataset
-  d = ci.Dataset(target)
+  d = ci.Dataset(target, train_pos_multiply=2)
   # batch size
   batch_size = 128
   # learning rate 
@@ -142,6 +142,6 @@ if __name__ == "__main__":
 
 
   #for target in target_list:
-  target = target_list[-1]
+  target = "CHEMBL4805"
   train(target, train_from=0)
 

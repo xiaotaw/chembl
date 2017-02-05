@@ -27,7 +27,7 @@ import chembl_input as ci
 
 
 
-def virtual_screening_single(target, part_num):
+def virtual_screening_single(target, g_step, part_num, gpu_num):
   t_0 = time.time()
 
   # dataset
@@ -41,7 +41,7 @@ def virtual_screening_single(target, part_num):
   # weight decay
   wd = 0.004
   # g_step
-  g_step = 2236500 
+  #g_step = 2236500 
 
   # virtual screen pred file
   pred_dir = "pred_files/%s" % target
@@ -59,7 +59,7 @@ def virtual_screening_single(target, part_num):
   fp_dir = "/raid/xiaotaw/pubchem/fp_files/%d" % part_num
 
   # screening
-  with tf.Graph().as_default(), tf.device("/gpu: 3"):
+  with tf.Graph().as_default(), tf.device("/gpu: %d" % gpu_num):
   #with tf.Graph().as_default(), tf.device("/gpu:%d" % (part_num % 4)):
     # the input
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
@@ -116,8 +116,8 @@ def predict(target, g_step_list=None):
     os.makedirs(pred_dir)
   
   # g_step_list
-  g_step_list = range(1, 2235900, 10 * step_per_epoch)
-  g_step_list = [2161371]
+  #g_step_list = range(1, 2235900, 10 * step_per_epoch)
+  #g_step_list = [2161371]
 
   with tf.Graph().as_default(), tf.device("/gpu:3"):
     
@@ -218,12 +218,15 @@ if __name__ == "__main__":
               ] 
 
   # the target
-  target = "CHEMBL203"
+  target = "CHEMBL205"
 
   # part_num range from 0 to 12(included)
-  #virtual_screening_single(target, int(sys.argv[1]))
+  #for i in range(9, 13):
+  #  virtual_screening_single(target, 2161081, i, 3)
 
-  predict(target)
+  predict(target, g_step_list=[2161081])
+
+  analyse(target, g_step=2161081)
 
 
 
