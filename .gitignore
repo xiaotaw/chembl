@@ -127,3 +127,5 @@ tmp*/
 # excel xlsx files
 *.xlsx
 
+# png files
+*.png
