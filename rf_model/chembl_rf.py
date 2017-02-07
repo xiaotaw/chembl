@@ -20,8 +20,8 @@ from sklearn.ensemble import RandomForestClassifier
 sys.path.append("/home/%s/Documents/chembl/data_files/" % getpass.getuser())
 import chembl_input as ci
 
-if not os.path.exists("model_files"):
-  os.mkdir("model_files")
+
+
 
 
 # the newly picked out 15 targets, include 9 targets from 5 big group, and 6 targets from others.
@@ -36,6 +36,18 @@ target_list = ["CHEMBL279", "CHEMBL203", # Protein Kinases
 # the target 
 target = "CHEMBL203"
 
+
+# 
+model_dir = "model_files"
+if not os.path.exists(model_dir):
+  os.mkdir(model_dir)
+
+#
+pred_dir = "pred_files"
+if not os.path.exists(pred_dir):
+  os.mkdir(pred_dir)
+
+
 # 
 d = ci.Dataset(target, train_pos_multiply=0)
 
@@ -46,14 +58,20 @@ clf = RandomForestClassifier(n_estimators=100, max_features=1.0/3, n_jobs=10, ma
 clf.fit(d.train_features, d.train_labels)
 
 # save model
-joblib.dump(clf, "model_files/rf_%s.m" % target)
+joblib.dump(clf, model_dir + "/rf_%s.m" % target)
 
 # predict class probabilities
-#pns_pred_proba = clf.predict_proba(d.target_pns_features)[:, 1]
-#cns_pred_proba = clf.predict_proba(d.target_cns_features_train)[:, 1]
-train_pred_proba = clf.predict_proba(d.train_features)[:, 1]
+#train_pred_proba = clf.predict_proba(d.train_features)[:, 1]
 test_pred_proba = clf.predict_proba(d.test_features)[:, 1]
 
+# save pred
+test_pred_file = open(pred_dir + "/test_%s.pred" % target, "w")
+for id_, pred_v, l_v in zip(d.time_split_test["CMPD_CHEMBLID"], test_pred_proba, d.test_labels):
+  test_pred_file.write("%s\t%f\t%f\n" % (id_, pred_v, l_v))
+
+test_pred_file.close()
+
+# draw roc fig
 fpr, tpr, _ = roc_curve(d.test_labels, test_pred_proba)
 roc_auc = auc(fpr, tpr)
 
@@ -66,8 +84,12 @@ plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
 plt.title("Receiver operating characteristic of RF model on %s" % target)
 plt.legend(loc="lower right")
-plt.show()
+plt.savefig("%s.png" % target)
+#plt.show()
 
+
+
+"""
 pns_pred = clf.predict(d.target_pns_features)
 cns_pred = clf.predict(d.target_cns_features_train)
 train_pred = clf.predict(d.train_features)
@@ -81,10 +103,10 @@ test_result = ci.compute_performance(d.test_labels, test_pred)
 print(train_result)
 
 print(test_result)
-
+"""
 
 # load model
-#clf = joblib.load("model_files/rf_%s.m" % target)
+#clf = joblib.load(model_dir + "/rf_%s.m" % target)
 
 
 
