@@ -5,83 +5,54 @@
 # Description:
 
 import os
+import sys
+import getpass
 import numpy as np
 from scipy import sparse
 from collections import defaultdict
 from sklearn.externals import joblib
 from sklearn.ensemble import RandomForestClassifier
 
+sys.path.append("/home/%s/Documents/chembl/data_files/" % getpass.getuser())
+import chembl_input as ci
 
+# the newly picked out 15 targets, include 9 targets from 5 big group, and 6 targets from others.
+target_list = ["CHEMBL279", "CHEMBL203", # Protein Kinases
+               "CHEMBL217", "CHEMBL253", # GPCRs (Family A)
+               "CHEMBL235", "CHEMBL206", # Nuclear Hormone Receptors
+               "CHEMBL240", "CHEMBL4296", # Voltage Gated Ion Channels
+               "CHEMBL4805", # Ligand Gated Ion Channels
+               "CHEMBL204", "CHEMBL244", "CHEMBL4822", "CHEMBL340", "CHEMBL205", "CHEMBL4005" # Others
+              ] 
 
-mask_files = "../data_files/mask_files"
-
-target_list = ['CHEMBL203', 'CHEMBL204', 'CHEMBL205', 'CHEMBL214', 'CHEMBL217',
-               'CHEMBL218', 'CHEMBL220', 'CHEMBL224', 'CHEMBL225', 'CHEMBL226',
-               'CHEMBL228', 'CHEMBL230', 'CHEMBL233', 'CHEMBL234', 'CHEMBL235',
-               'CHEMBL236', 'CHEMBL237', 'CHEMBL240', 'CHEMBL244', 'CHEMBL251',
-               'CHEMBL253', 'CHEMBL256', 'CHEMBL259', 'CHEMBL260', 'CHEMBL261',
-               'CHEMBL264', 'CHEMBL267', 'CHEMBL279', 'CHEMBL284', 'CHEMBL2842',
-               'CHEMBL289', 'CHEMBL325', 'CHEMBL332', 'CHEMBL333', 'CHEMBL340',
-               'CHEMBL344', 'CHEMBL4005', 'CHEMBL4296', 'CHEMBL4722', 'CHEMBL4822']
-
-# the target
+# the target 
 target = "CHEMBL205"
 
-# read count and the apfps that were picked out 
-counts = np.genfromtxt(mask_files + "/%s_apfp.count" % target, delimiter="\t", dtype=int)
-target_apfp_picked = counts[counts[:, 1] > 10][:, 0]
-target_apfp_picked.sort()
-
-# columns and sparse features
-columns_dict = defaultdict(lambda : len(target_apfp_picked))
-for i, apfp in enumerate(target_apfp_picked):
-  columns_dict[apfp] = i
-
-def sparse_features(fps_list):
-  data = []
-  indices = []
-  indptr = [0]
-  for fps_str in fps_list:
-    n = indptr[-1]
-    for fp in fps_str[1:-1].split(","):
-      if ":" in fp:
-        k, v = fp.split(":")
-        indices.append(columns_dict[int(k)])
-        data.append(int(v))
-        n += 1
-    indptr.append(n)
-  a = sparse.csr_matrix((np.array(data), indices, indptr), shape=(len(fps_list), len(target_apfp_picked) + 1))
-  return a
+# input dataset
+d = ci.DatasetVS(target)
 
 # read saved rf clf model
-clf = joblib.load("rf_%s.m" % target)
+clf = joblib.load("model_files/rf_%s.m" % target)
 
-# open vs log
-log_file = open("rf_%s_vs.log" % target, "w")
+# pred file
+pred_dir = "pred_files/%s" % target
 
-for num in range(13):
+for part_num in range(13):
+
+  pred_path = os.path.join(pred_dir, "vs_pubchem_%d.pred" % part_num)
+  predfile = open(pred_path, "w")
+
   fp_dir = "/raid/xiaotaw/pubchem/fp_files/%d" % num
   for i in range(num * 10000000 + 1, (num + 1) * 10000000, 25000):
     fn = os.path.join(fp_dir, "Compound_{:0>9}_{:0>9}.apfp".format(i, i + 24999))
     if os.path.exists(fn):
-      ids_list = []
-      fps_dict = {}
-      f = open(fn, "r")
-      for line in f:
-        id_, fps_str = line.split("\t")
-        id_ = id_.strip()
-        fps_str = fps_str.strip()
-        ids_list.append(id_)
-        fps_dict[id_] = fps_str
-      f.close()
-      features = sparse_features([fps_dict[k] for k in ids_list])[:, :-1]
-      pred = clf.predict(features)
-      result = np.array(ids_list)[pred.astype(bool)]
-      log_file.writelines(["%s\n" % x for x in result])
-      print("%s\t%d\n" % (fn, result.shape[0]))
+      d.reset(fp_fn)
+      features = d.features_dense
+      pred = clf.predict_prob(features)
+      for id_, pred_v in zip(d.pubchem_id, pred[:, 1]):
+        predfile.writeline("%s\t%f\n" % (id_, pred_v))
+      print("%s\t%d\n" % (fn, pred.shape[0]))
 
-
-log_file.close()
 
 
 
