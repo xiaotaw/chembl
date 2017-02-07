@@ -7,6 +7,7 @@
 import os
 import sys
 import math
+import time
 import getpass
 import numpy as np
 import pandas as pd
@@ -48,45 +49,47 @@ if not os.path.exists(pred_dir):
   os.mkdir(pred_dir)
 
 
-# 
-d = ci.Dataset(target, train_pos_multiply=0)
+def train_pred(target, train_pos_multiply=0):
+  # 
+  d = ci.Dataset(target, train_pos_multiply=train_pos_multiply)
+  # random forest clf
+  clf = RandomForestClassifier(n_estimators=100, max_features=1.0/3, n_jobs=10, max_depth=None, min_samples_split=5, random_state=0)
+  # fit model
+  clf.fit(d.train_features, d.train_labels)
+  # save model
+  joblib.dump(clf, model_dir + "/rf_%s.m" % target)
+  # predict class probabilities
+  #train_pred_proba = clf.predict_proba(d.train_features)[:, 1]
+  test_pred_proba = clf.predict_proba(d.test_features)[:, 1]
+  # save pred
+  test_pred_file = open(pred_dir + "/test_%s.pred" % target, "w")
+  for id_, pred_v, l_v in zip(d.time_split_test["CMPD_CHEMBLID"], test_pred_proba, d.test_labels):
+    test_pred_file.write("%s\t%f\t%f\n" % (id_, pred_v, l_v))
+  test_pred_file.close()
+  # draw roc fig
+  fpr, tpr, _ = roc_curve(d.test_labels, test_pred_proba)
+  roc_auc = auc(fpr, tpr)
+  plt.figure()
+  plt.plot(fpr, tpr, color="r", lw=2, label="ROC curve (area = %.2f)" % roc_auc)
+  plt.plot([0, 1], [0, 1], color="navy", lw=1, linestyle="--")
+  plt.xlim([0.0, 1.0])
+  plt.ylim([0.0, 1.05])
+  plt.xlabel("False Positive Rate")
+  plt.ylabel("True Positive Rate")
+  plt.title("Receiver operating characteristic of RF model on %s" % target)
+  plt.legend(loc="lower right")
+  plt.savefig("%s.png" % target)
+  #plt.show()
 
-# random forest clf
-clf = RandomForestClassifier(n_estimators=100, max_features=1.0/3, n_jobs=10, max_depth=None, min_samples_split=5, random_state=0)
 
-# fit model
-clf.fit(d.train_features, d.train_labels)
+target_list = ["CHEMBL4805", "CHEMBL204", "CHEMBL4822", "CHEMBL244"] 
+tpm_list = [2, 0, 0, 0]
 
-# save model
-joblib.dump(clf, model_dir + "/rf_%s.m" % target)
-
-# predict class probabilities
-#train_pred_proba = clf.predict_proba(d.train_features)[:, 1]
-test_pred_proba = clf.predict_proba(d.test_features)[:, 1]
-
-# save pred
-test_pred_file = open(pred_dir + "/test_%s.pred" % target, "w")
-for id_, pred_v, l_v in zip(d.time_split_test["CMPD_CHEMBLID"], test_pred_proba, d.test_labels):
-  test_pred_file.write("%s\t%f\t%f\n" % (id_, pred_v, l_v))
-
-test_pred_file.close()
-
-# draw roc fig
-fpr, tpr, _ = roc_curve(d.test_labels, test_pred_proba)
-roc_auc = auc(fpr, tpr)
-
-plt.figure()
-plt.plot(fpr, tpr, color="r", lw=2, label="ROC curve (area = %.2f)" % roc_auc)
-plt.plot([0, 1], [0, 1], color="navy", lw=1, linestyle="--")
-plt.xlim([0.0, 1.0])
-plt.ylim([0.0, 1.05])
-plt.xlabel("False Positive Rate")
-plt.ylabel("True Positive Rate")
-plt.title("Receiver operating characteristic of RF model on %s" % target)
-plt.legend(loc="lower right")
-plt.savefig("%s.png" % target)
-#plt.show()
-
+for target, tpm in zip(target_list, tpm_list):
+  t0 = time.time()
+  train_pred(target, train_pos_multiply=tpm)
+  t1 = time.time()
+  print("%s duration: %.3f" % (target, t1-t0))
 
 
 """
