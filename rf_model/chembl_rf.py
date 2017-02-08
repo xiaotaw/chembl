@@ -82,6 +82,9 @@ def train_pred(target, train_pos_multiply=0):
   #plt.show()
 
 
+
+
+"""
 target_list = ["CHEMBL4805", "CHEMBL204", "CHEMBL4822", "CHEMBL244"] 
 tpm_list = [2, 0, 0, 0]
 
@@ -90,6 +93,23 @@ for target, tpm in zip(target_list, tpm_list):
   train_pred(target, train_pos_multiply=tpm)
   t1 = time.time()
   print("%s duration: %.3f" % (target, t1-t0))
+"""
+
+t0 = time.time()
+train_pred("CHEMBL4805", train_pos_multiply=0)
+t1 = time.time()
+print("%s duration: %.3f" % (target, t1-t0))
+
+
+
+
+
+
+
+
+
+
+
 
 
 """
