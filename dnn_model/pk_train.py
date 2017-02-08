@@ -17,7 +17,7 @@ import random
 import tensorflow as tf
 
 import pk_input as pki
-import pk_model
+import dnn_model
 
 
 def train(target_list, train_from = 0):
@@ -74,7 +74,7 @@ def train(target_list, train_from = 0):
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
     # build the "Tree" with a mutual "Term" and several "Branches"
-    base = pk_model.term(input_placeholder, wd=wd, keep_prob=keep_prob)
+    base = dnn_model.term(input_placeholder, wd=wd, keep_prob=keep_prob)
     softmax_dict = dict()
     wd_loss_dict = dict()
     x_entropy_dict = dict()
@@ -83,13 +83,13 @@ def train(target_list, train_from = 0):
     train_op_dict = dict()
     for target in target_list:
       # compute softmax
-      softmax_dict[target] = pk_model.branch(target, base, wd=wd, keep_prob=keep_prob)
+      softmax_dict[target] = dnn_model.branch(target, base, wd=wd, keep_prob=keep_prob)
       # compute loss.
       wd_loss_dict[target] = tf.add_n(tf.get_collection("term_wd_loss") + tf.get_collection(target+"_wd_loss"))
-      x_entropy_dict[target] = pk_model.x_entropy(softmax_dict[target], label_placeholder, target)
+      x_entropy_dict[target] = dnn_model.x_entropy(softmax_dict[target], label_placeholder, target)
       loss_dict[target]  = tf.add(wd_loss_dict[target], x_entropy_dict[target])
       # compute accuracy
-      accuracy_dict[target] = pk_model.accuracy(softmax_dict[target], label_placeholder, target)
+      accuracy_dict[target] = dnn_model.accuracy(softmax_dict[target], label_placeholder, target)
       # train op
       train_op_dict[target] = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss_dict[target], global_step=global_step)
     # create a saver.
@@ -127,7 +127,7 @@ def train(target_list, train_from = 0):
         if step % step_per_epoch == 0 or (step + 1) == max_step:
           g_step, wd_ls, x_ls, lr, acc, pred, label_dense = sess.run([global_step, wd_loss_dict[target], x_entropy_dict[target], learning_rate, accuracy_dict[target], tf.argmax(softmax_dict[target], 1), tf.argmax(labels_batch, 1)],
             feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch})
-          tp, tn, fp, fn, sen, spe, mcc = pk_model.compute_performance(label_dense, pred)
+          tp, tn, fp, fn, sen, spe, mcc = dnn_model.compute_performance(label_dense, pred)
           t3 = float(time.time())       
           # print to file and screen
 
@@ -151,7 +151,7 @@ def train(target_list, train_from = 0):
           g_step, wd_ls, x_ls, lr, acc, pred, label_dense = sess.run([global_step, wd_loss_dict[target], x_entropy_dict[target], learning_rate, accuracy_dict[target], tf.argmax(softmax_dict[target], 1), tf.argmax(labels_batch, 1)],
             feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch})
           t3 = float(time.time()) 
-          tp, tn, fp, fn, sen, spe, mcc = pk_model.compute_performance(label_dense, pred)
+          tp, tn, fp, fn, sen, spe, mcc = dnn_model.compute_performance(label_dense, pred)
           # print to file and screen
           logfile.write(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, t1-t0, t2-t1, t3-t2, target))
           logfile.write('\n')
@@ -166,7 +166,7 @@ def train(target_list, train_from = 0):
           g_step, wd_ls, x_ls, lr, acc, pred, label_dense = sess.run([global_step, wd_loss_dict[target], x_entropy_dict[target], learning_rate, accuracy_dict[target], tf.argmax(softmax_dict[target], 1), tf.argmax(labels_batch, 1)],
             feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch})
           t3 = float(time.time()) 
-          tp, tn, fp, fn, sen, spe, mcc = pk_model.compute_performance(label_dense, pred)
+          tp, tn, fp, fn, sen, spe, mcc = dnn_model.compute_performance(label_dense, pred)
           # print to file and screen
           logfile.write(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, t1-t0, t2-t1, t3-t2, target))
           logfile.write('\n')

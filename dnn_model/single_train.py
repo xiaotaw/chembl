@@ -16,7 +16,7 @@ import datetime
 import tensorflow as tf
 
 sys.path.append("/home/%s/Documents/chembl/data_files/" % getpass.getuser())
-import pk_model
+import dnn_model
 import chembl_input as ci
 
 
@@ -63,12 +63,12 @@ def train(target, train_from = 0):
     learning_rate = tf.train.exponential_decay(start_learning_rate, global_step, decay_step, decay_rate)
     # build a Graph that computes the softmax predictions from the
     # inference model.
-    base = pk_model.term(input_placeholder, in_units=input_vec_len, wd=wd, keep_prob=keep_prob)
+    base = dnn_model.term(input_placeholder, in_units=input_vec_len, wd=wd, keep_prob=keep_prob)
     # compute softmax
-    softmax = pk_model.branch(target, base, wd=wd, keep_prob=keep_prob)
+    softmax = dnn_model.branch(target, base, wd=wd, keep_prob=keep_prob)
     # compute loss.
     wd_loss = tf.add_n(tf.get_collection("term_wd_loss") + tf.get_collection(target+"_wd_loss"))
-    x_entropy = pk_model.x_entropy(softmax, label_placeholder, target, neg_weight=1)
+    x_entropy = dnn_model.x_entropy(softmax, label_placeholder, target, neg_weight=1)
     loss  = tf.add(wd_loss, x_entropy)
     # train op
     train_op = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)

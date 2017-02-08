@@ -19,7 +19,7 @@ import tensorflow as tf
 from scipy import sparse
 from matplotlib import pyplot as plt
 
-import pk_model
+import dnn_model
 sys.path.append("/home/scw4750/Documents/chembl/data_files/")
 import chembl_input as ci
 
@@ -64,9 +64,9 @@ def virtual_screening_single(target, g_step, part_num, gpu_num):
     # the input
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
     # the term
-    base = pk_model.term(input_placeholder, in_units=input_vec_len, wd=wd, keep_prob=1.0)
+    base = dnn_model.term(input_placeholder, in_units=input_vec_len, wd=wd, keep_prob=1.0)
     # the branches
-    softmax = pk_model.branch(target, base, wd=wd, keep_prob=1.0)
+    softmax = dnn_model.branch(target, base, wd=wd, keep_prob=1.0)
     # create a saver.
     saver = tf.train.Saver(tf.trainable_variables())
     # Start screen
@@ -125,12 +125,12 @@ def predict(target, g_step_list=None):
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
     # build the "Tree" with a mutual "Term" and several "Branches"
-    base = pk_model.term(input_placeholder, in_units=input_vec_len, wd=wd, keep_prob=1.0)
+    base = dnn_model.term(input_placeholder, in_units=input_vec_len, wd=wd, keep_prob=1.0)
     # compute softmax
-    softmax = pk_model.branch(target, base, wd=wd, keep_prob=1.0)
+    softmax = dnn_model.branch(target, base, wd=wd, keep_prob=1.0)
     # compute loss.
     wd_loss = tf.add_n(tf.get_collection("term_wd_loss") + tf.get_collection(target+"_wd_loss"))
-    x_entropy = pk_model.x_entropy(softmax, label_placeholder, target)
+    x_entropy = dnn_model.x_entropy(softmax, label_placeholder, target)
     loss  = tf.add(wd_loss, x_entropy)
     # create a saver.
     saver = tf.train.Saver(tf.trainable_variables())

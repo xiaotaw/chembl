@@ -18,7 +18,7 @@ import datetime
 import tensorflow as tf
 from scipy import sparse
 
-import pk_model
+import dnn_model
 
 
 def virtual_screening(target_list, part_num):
@@ -41,12 +41,12 @@ def virtual_screening(target_list, part_num):
     input_placeholder = tf.placeholder(tf.float32, shape = (None, 8192))
 
     # the term
-    base = pk_model.term(input_placeholder, keep_prob=1.0)
+    base = dnn_model.term(input_placeholder, keep_prob=1.0)
 
     # the branches
     softmax_dict = dict()
     for target in target_list:
-      softmax_dict[target] = pk_model.branch(target, base, keep_prob=1.0)
+      softmax_dict[target] = dnn_model.branch(target, base, keep_prob=1.0)
 
     # create a saver.
     saver = tf.train.Saver(tf.trainable_variables())

@@ -13,7 +13,7 @@ import time
 import numpy
 import datetime
 import tensorflow as tf
-import pk_model
+import dnn_model
 import pk_input
 
 def evaluate(target_list):
@@ -42,7 +42,7 @@ def evaluate(target_list):
     input_placeholder = tf.placeholder(tf.float32, shape = (None, 8192))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
     # build the "Tree" with a mutual "Term" and several "Branches"
-    base = pk_model.term(input_placeholder, keep_prob=1.0)
+    base = dnn_model.term(input_placeholder, keep_prob=1.0)
     softmax_dict = dict()
     wd_loss_dict = dict()
     x_entropy_dict = dict()
@@ -50,13 +50,13 @@ def evaluate(target_list):
     accuracy_dict = dict()
     for target in target_list:
       # compute softmax
-      softmax_dict[target] = pk_model.branch(target, base, keep_prob=1.0)
+      softmax_dict[target] = dnn_model.branch(target, base, keep_prob=1.0)
       # compute loss.
       wd_loss_dict[target] = tf.add_n(tf.get_collection("term_wd_loss") + tf.get_collection(target+"_wd_loss"))
-      x_entropy_dict[target] = pk_model.x_entropy(softmax_dict[target], label_placeholder, target)
+      x_entropy_dict[target] = dnn_model.x_entropy(softmax_dict[target], label_placeholder, target)
       loss_dict[target]  = tf.add(wd_loss_dict[target], x_entropy_dict[target])
       # compute accuracy
-      accuracy_dict[target] = pk_model.accuracy(softmax_dict[target], label_placeholder, target)
+      accuracy_dict[target] = dnn_model.accuracy(softmax_dict[target], label_placeholder, target)
 
     # create a saver.
     saver = tf.train.Saver(tf.trainable_variables())
@@ -89,7 +89,7 @@ def evaluate(target_list):
         }
       )
       t2 = time.time()
-      TP, TN, FP, FN, SEN, SPE, MCC = pk_model.compute_performance(label_dense, prediction)
+      TP, TN, FP, FN, SEN, SPE, MCC = dnn_model.compute_performance(label_dense, prediction)
       format_str = "%6d %6d %6.3f %6.3f %10.3f %5d %5d %5d %5d %6.3f %6.3f %6.3f %6.3f %5.3f %5.3f %s"
       logfile.write(format_str % (5000, 40000, LV, XLV, 0, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))
       logfile.write('\n')
@@ -113,7 +113,7 @@ def evaluate(target_list):
         }
       )
       t2 = time.time()
-      TP, TN, FP, FN, SEN, SPE, MCC = pk_model.compute_performance(label_dense, prediction)
+      TP, TN, FP, FN, SEN, SPE, MCC = dnn_model.compute_performance(label_dense, prediction)
       format_str = "%6d %6d %6.3f %6.3f %10.3f %5d %5d %5d %5d %6.3f %6.3f %6.3f %6.3f %5.3f %5.3f %s"
       logfile.write(format_str % (5000, 40000, LV, XLV, 0, TP, FN, TN, FP, SEN, SPE, ACC, MCC, t1-t0, t2-t1, target))
       logfile.write('\n')
