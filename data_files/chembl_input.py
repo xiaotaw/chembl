@@ -71,53 +71,8 @@ def sparse_features(fps_list, target_columns_dict, num_features, is_log=True):
   return features
 
 
-class Dataset(object):
-  """Base dataset class for chembl inhibitors
-  """
-  def __init__(self, target, one_hot=True, is_shuffle_train=True, year_split=2014, train_pos_multiply=0):
-    """Constructor, create a dataset container. 
-    Args:
-      target: <type 'str'> the chemblid of the target, e.g. "CHEMBL203".
-      one_hot: <type 'bool'> flag whether create one_hot label, default is True.
-      is_shuffle: <type 'bool'> flag whether shuffle samples when the dataset created.
-      year_split: <type 'int'> time split year, 
-        if a molecule's year > year_split, it will be split into test data,
-        otherwise, if a molecule's year <= year_split, it will be split into train data.
-    Return:
-      None
-    """
-    # read top 79 targets' label
-    self.clf_label_79 = pd.read_csv(structure_dir + "/chembl_top79.label", usecols=[0, 2, 3, 4], delimiter="\t")
-    # read target's label
-    self.target_clf_label = self.clf_label_79[self.clf_label_79["TARGET_CHEMBLID"] == target]
-    # read chembl id and apfp
-    self.chembl_id = []
-    self.chembl_apfp = {}
-    f = open(fp_dir + "/chembl.apfp", "r")
-    for line in f:
-      id_, fps_str = line.split("\t")
-      id_ = id_.strip()
-      fps_str = fps_str.strip()
-      self.chembl_id.append(id_)
-      self.chembl_apfp[id_] = fps_str
-    f.close()
-    # read pns apfp
-    self.pns_id = []
-    self.pns_apfp = {}
-    f = open(fp_dir + "/pubchem_neg_sample.apfp", "r")
-    for line in f:
-      id_, fps_str = line.split("\t")
-      id_ = id_.strip()
-      fps_str = fps_str.strip()
-      self.pns_id.append(id_)
-      self.pns_apfp[id_] = fps_str                
-    f.close()
-    # remove compounds whose apfp cannot be caculated
-    m = self.target_clf_label["CMPD_CHEMBLID"].isin(self.chembl_id)
-    self.target_clf_label = self.target_clf_label[m.values]  
-    # read mask
-    self.target_pns_mask = pd.Series.from_csv(mask_dir + "/%s_pns.mask" % target, header=None, sep="\t")
-    self.target_cns_mask = pd.Series.from_csv(mask_dir + "/%s_cns.mask" % target, header=None, sep="\t")
+class DatasetBase(object):
+  def __init__(self, target):
     # read count and the apfps that were picked out 
     counts = np.genfromtxt(mask_dir + "/%s_apfp.count" % target, delimiter="\t", dtype=int)
     self.target_apfp_picked = counts[counts[:, 1] > 10][:, 0]
@@ -129,32 +84,107 @@ class Dataset(object):
     self.target_columns_dict = defaultdict(lambda : self.num_features)
     for i, apfp in enumerate(self.target_apfp_picked):
       self.target_columns_dict[apfp] = i
-    # generate features
-    self.target_pns_features = sparse_features([self.pns_apfp[k] for k in self.pns_id], self.target_columns_dict, self.num_features)[:, :-1]
-    self.target_cns_features = sparse_features([self.chembl_apfp[k] for k in self.chembl_id], self.target_columns_dict, self.num_features)[:, :-1]
+
+
+class DatasetTarget(DatasetBase):
+  def __init__(self, target, year_split=2014):
+    DatasetBase.__init__(self, target)
+    # read chembl id and apfp
+    self.chembl_id = []
+    self.chembl_apfp = {}
+    f = open(fp_dir + "/chembl.apfp", "r")
+    for line in f:
+      id_, fps_str = line.split("\t")
+      id_ = id_.strip()
+      fps_str = fps_str.strip()
+      self.chembl_id.append(id_)
+      self.chembl_apfp[id_] = fps_str
+    f.close()
+    # read top 79 targets' label data, and get the specific target's label data
+    clf_label_79 = pd.read_csv(structure_dir + "/chembl_top79.label", usecols=[0, 2, 3, 4], delimiter="\t")
+    self.target_clf_label = clf_label_79[clf_label_79["TARGET_CHEMBLID"] == target]
+    # remove compounds whose apfp cannot be caculated
+    m = self.target_clf_label["CMPD_CHEMBLID"].isin(self.chembl_id)
+    self.target_clf_label = self.target_clf_label[m.values] 
     # time split
-    self.time_split_test = self.target_clf_label[self.target_clf_label["YEAR"] > year_split]
-    self.time_split_train = self.target_clf_label[self.target_clf_label["YEAR"] <= year_split]    
-    m = self.target_cns_mask.index.isin(self.time_split_test["CMPD_CHEMBLID"])
-    self.target_cns_features_test = self.target_cns_features[m]
-    self.target_cns_features_train = self.target_cns_features[~m]
-    self.target_cns_mask_test = self.target_cns_mask[m]
-    self.target_cns_mask_train = self.target_cns_mask[~m]
+    time_mask = self.target_clf_label["YEAR"] > year_split
+    time_split_train = self.target_clf_label[~time_mask] 
+    time_split_test = self.target_clf_label[time_mask]
+    # ids
+    self.target_ids_train = time_split_train["CMPD_CHEMBLID"].values
+    self.target_ids_test = time_split_test["CMPD_CHEMBLID"].values
+    # features   
+    self.target_features_train = sparse_features([self.chembl_apfp[k] for k in self.target_ids_train], self.target_columns_dict, self.num_features)[:, :-1]
+    self.target_features_test = sparse_features([self.chembl_apfp[k] for k in self.target_ids_test], self.target_columns_dict, self.num_features)[:, :-1]
+    # labels
+    self.target_labels_train = (time_split_train["CLF_LABEL"] > 0).astype(int).values
+    self.target_labels_test = (time_split_test["CLF_LABEL"] > 0).astype(int).values
+
+
+class DatasetCNS(DatasetTarget):
+  def __init__(self, target, year_split=2014):
+    DatasetTarget.__init__(self, target, year_split=year_split)
+    # read mask
+    self.cns_mask = pd.Series.from_csv(mask_dir + "/%s_cns.mask" % target, header=None, sep="\t")    
+    # features
+    self.cns_features = sparse_features([self.chembl_apfp[k] for k in self.chembl_id], self.target_columns_dict, self.num_features)[:, :-1]
+    # 
+    m = self.cns_mask.index.isin(self.target_ids_test)
+    self.cns_features_train = self.cns_features[~m]
+    self.cns_mask_train = self.cns_mask[~m]
+
+
+class DatasetPNS(DatasetBase):
+  def __init__(self, target):
+    DatasetBase.__init__(self, target)
+    # read pns apfp
+    self.pns_id = []
+    self.pns_apfp = {}
+    f = open(fp_dir + "/pubchem_neg_sample.apfp", "r")
+    for line in f:
+      id_, fps_str = line.split("\t")
+      id_ = id_.strip()
+      fps_str = fps_str.strip()
+      self.pns_id.append(id_)
+      self.pns_apfp[id_] = fps_str                
+    f.close()
+    # read mask
+    self.pns_mask = pd.Series.from_csv(mask_dir + "/%s_pns.mask" % target, header=None, sep="\t")
+    # features
+    self.pns_features = sparse_features([self.pns_apfp[k] for k in self.pns_id], self.target_columns_dict, self.num_features)[:, :-1]
+
+
+class Dataset(DatasetCNS, DatasetPNS):
+  """Base dataset class for chembl inhibitors
+  """
+  def __init__(self, target, one_hot=True, is_shuffle_train=True,  train_pos_multiply=0):
+    """Constructor, create a dataset container. 
+    Args:
+      target: <type 'str'> the chemblid of the target, e.g. "CHEMBL203".
+      one_hot: <type 'bool'> flag whether create one_hot label, default is True.
+      is_shuffle: <type 'bool'> flag whether shuffle samples when the dataset created.
+      year_split: <type 'int'> time split year, 
+        if a molecule's year > year_split, it will be split into test data,
+        otherwise, if a molecule's year <= year_split, it will be split into train data.
+    Return:
+      None
+    """
+    DatasetCNS.__init__(self, target, year_split=2014)
+    DatasetPNS.__init__(self, target)
     # cns train pos 
-    self.target_cns_features_train_pos = self.target_cns_features_train[self.target_cns_mask_train.values]
-    self.target_cns_mask_train_pos = self.target_cns_mask_train[self.target_cns_mask_train.values]
+    self.cns_features_train_pos = self.cns_features_train[self.cns_mask_train.values]
+    self.cns_mask_train_pos = self.cns_mask_train[self.cns_mask_train.values]
     # train, if train_pos_multiply > 0, cns_train_pos will be extra added for train_pos_multiply times .
-    tf_list = [self.target_cns_features_train, self.target_pns_features]
-    tl_list = [self.target_cns_mask_train, self.target_pns_mask]
+    tf_list = [self.cns_features_train, self.pns_features]
+    tl_list = [self.cns_mask_train, self.pns_mask]
     for _ in range(train_pos_multiply):
-      tf_list.append(self.target_cns_features_train_pos)
-      tl_list.append(self.target_cns_mask_train_pos)
+      tf_list.append(self.cns_features_train_pos)
+      tl_list.append(self.cns_mask_train_pos)
     self.train_features = sparse.vstack(tf_list)
     self.train_labels = np.hstack(tl_list).astype(int)
     # test
-    self.test_features = self.target_cns_features_test
-    self.test_features_dense = self.test_features.toarray()
-    self.test_labels = self.target_cns_mask_test.values.astype(int)
+    self.test_features = self.target_features_test
+    self.test_labels = self.target_labels_test
     # one_hot
     if one_hot:
       self.train_labels_one_hot = dense_to_one_hot(self.train_labels) 
@@ -167,7 +197,7 @@ class Dataset(object):
     self.train_begin = 0
     self.train_end = 0
 
-    self.cns_size = self.target_cns_features.shape[0] # (878721, 9412)
+    self.cns_size = self.cns_features.shape[0] # (878721, 9412)
     self.cns_perm = np.arange(self.cns_size)
     self.cns_begin = 0
     self.cns_end = 0
@@ -214,21 +244,13 @@ class Dataset(object):
     if self.cns_end > self.cns_size:
       self.cns_end = self.cns_size
     perm = self.cns_perm[self.cns_begin: self.cns_end]
-    return self.target_cns_features[perm].toarray().astype(np.float32), dense_to_one_hot(self.target_cns_mask[perm].astype(int))
+    return self.cns_features[perm].toarray().astype(np.float32), dense_to_one_hot(self.target_cns_mask[perm].astype(int))
 
 
 # dataset for virtual screening(vs)
-class DatasetVS(object):
-  def __init__(self, target=target_list[0]):
-    # read count and the apfps that were picked out 
-    counts = np.genfromtxt(mask_dir + "/%s_apfp.count" % target, delimiter="\t", dtype=int)
-    self.target_apfp_picked = counts[counts[:, 1] > 10][:, 0]
-    self.target_apfp_picked.sort()
-    self.num_features = len(self.target_apfp_picked)
-    # columns and sparse features
-    self.target_columns_dict = defaultdict(lambda : self.num_features)
-    for i, apfp in enumerate(self.target_apfp_picked):
-      self.target_columns_dict[apfp] = i
+class DatasetVS(DatasetBase):
+  def __init__(self, target):
+    DatasetBase.__init__(self, target)
 
   def reset(self, fp_fn):
     # read chembl id and apfp
@@ -265,9 +287,6 @@ def compute_performance(label, prediction):
   return TP, TN, FP, FN, SEN, SPE, ACC, MCC
 
 
-
-#train_result = compute_performance(train_labels, train_pred)
-#test_result = compute_performance(target_cns_mask_test.values.astype(int), test_pred)
 
 
 
