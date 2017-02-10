@@ -63,7 +63,7 @@ def train_pred(target, train_pos_multiply=0):
   test_pred_proba = clf.predict_proba(d.test_features)[:, 1]
   # save pred
   test_pred_file = open(pred_dir + "/test_%s.pred" % target, "w")
-  for id_, pred_v, l_v in zip(d.time_split_test["CMPD_CHEMBLID"], test_pred_proba, d.test_labels):
+  for id_, pred_v, l_v in zip(d.target_ids_test, test_pred_proba, d.test_labels):
     test_pred_file.write("%s\t%f\t%f\n" % (id_, pred_v, l_v))
   test_pred_file.close()
   # draw roc fig
@@ -90,7 +90,7 @@ target_list = ["CHEMBL203", "CHEMBL205", "CHEMBL279", "CHEMBL340",
               ] 
 
 
-for target, tpm in zip(target_list, tpm_list):
+for target in target_list:
   t0 = time.time()
   train_pred(target, train_pos_multiply=0)
   t1 = time.time()
