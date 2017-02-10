@@ -63,7 +63,7 @@ def train_pred(target, train_pos_multiply=0):
   test_pred_proba = clf.predict_proba(d.test_features)[:, 1]
   # save pred
   test_pred_file = open(pred_dir + "/test_%s.pred" % target, "w")
-  for id_, pred_v, l_v in zip(d.time_split_test["CMPD_CHEMBLID"], test_pred_proba, d.test_labels):
+  for id_, pred_v, l_v in zip(d.target_ids_test, test_pred_proba, d.test_labels):
     test_pred_file.write("%s\t%f\t%f\n" % (id_, pred_v, l_v))
   test_pred_file.close()
   # draw roc fig
@@ -71,7 +71,7 @@ def train_pred(target, train_pos_multiply=0):
   roc_auc = auc(fpr, tpr)
   plt.figure()
   plt.plot(fpr, tpr, color="r", lw=2, label="ROC curve (area = %.2f)" % roc_auc)
-  plt.plot([0, 1], [0, 1], color="navy", lw=1, linestyle="--")
+  plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--")
   plt.xlim([0.0, 1.0])
   plt.ylim([0.0, 1.05])
   plt.xlabel("False Positive Rate")
@@ -84,15 +84,19 @@ def train_pred(target, train_pos_multiply=0):
 
 
 
-"""
-target_list = ["CHEMBL4805", "CHEMBL204", "CHEMBL4822", "CHEMBL244"] 
-tpm_list = [2, 0, 0, 0]
 
-for target, tpm in zip(target_list, tpm_list):
+target_list = ["CHEMBL203", "CHEMBL205", "CHEMBL279", "CHEMBL340", 
+               "CHEMBL4005", "CHEMBL4805",  
+              ] 
+
+
+for target in target_list:
   t0 = time.time()
-  train_pred(target, train_pos_multiply=tpm)
+  train_pred(target, train_pos_multiply=0)
   t1 = time.time()
   print("%s duration: %.3f" % (target, t1-t0))
+
+
 """
 
 t0 = time.time()
@@ -100,7 +104,7 @@ train_pred("CHEMBL4805", train_pos_multiply=0)
 t1 = time.time()
 print("%s duration: %.3f" % (target, t1-t0))
 
-
+"""
 
 
 
