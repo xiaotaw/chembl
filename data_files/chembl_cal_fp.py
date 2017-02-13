@@ -6,6 +6,7 @@
 #              2. analyse apfp
 
 import os
+import gzip
 import numpy as np
 from collections import defaultdict
 
@@ -19,15 +20,6 @@ def dict_2_str(d):
   return ", ".join(kv_list)
 
 """
-def str_2_dict(fps_str):
-  fps_dict = {}
-  for fp in fps_str[1:-1].split(","):
-    if ":" in fp:
-      k, v = fp.split(":")
-      fps_dict[int(k)] = int(v)
-  return fps_dict
-"""
-
 ## calculate chembl apfp
 #
 sup = Chem.SmilesMolSupplier("structure_files/chembl.smiles", delimiter=",", smilesColumn=1, nameColumn=0, titleLine=True)
@@ -61,73 +53,21 @@ for m in sup:
   apfp_file.write("%s\t{%s}\n" % (id_, dict_2_str(apfps)))
 
 apfp_file.close()
-
-
-##pick out some apfps
-#Descrition:
-#  After calculate fps, I found that many fps was so rare that only few 
-#  molecule has those fps, and those fps account the major part.
-#  So, I sum up all apfps' frequency, and remove fps with frequence <= 10,
-#  or frequence > n-10(n is the number of sample).
-#Output:
-#  apfp.picked_all: contains all apfps picked out for 8 target and pubchem neg sample(pns).
-"""
-# for pns 
-f = open("fp_files/pubchem_neg_sample.apfp", "r")
-counts = defaultdict(lambda : 0)
-n = 0
-for line in f:
-  fps = line.split("\t")[1].strip()[1:-1].split(",")
-  n += 1
-  for fp in fps:
-    if ":" in fp:
-      k, v = fp.split(":")
-      counts[int(k)] += 1
-f.close()
-v = [[k, counts[k]] for k in counts.keys()]
-v = np.array(v)
-m = (v[:, 1] > 10) & (v[:, 1] < n - 10)
-pns_k = v[:, 0][m]
-
-# output into file
-f = open("fp_files/pns_apfp.picked_all", "w")
-for i in k:
-  f.write("%d\n" % i)
-f.close()
-
-
-# for chembl
-f = open("fp_files/chembl.apfp", "r")
-counts = defaultdict(lambda : 0)
-n = 0
-for line in f:
-  fps = line.split("\t")[1].strip()[1:-1].split(",")
-  n += 1
-  if n % 10000 == 0:
-    print(("line num: %d, unique fps num: %d") % (n, len(counts.keys())))
-  for fp in fps:
-    if ":" in fp:
-      k, v = fp.split(":")
-      counts[int(k)] += 1
-
-f.close()
-print(("line num: %d, unique fps num: %d") % (n, len(counts.keys())))
-
-v = [[k, counts[k]] for k in counts.keys()]
-v = np.array(v)
-m = (v[:, 1] > 10) & (v[:, 1] < n - 10)
-pns_k = v[:, 0][m]
-
-# output into file
-f = open("fp_files/chembl_apfp.picked_all", "w")
-for i in k:
-  f.write("%d\n" % i)
-f.close()
-
 """
 
+## calculate ChemDiv apfp
+ChemDiv_dir = "/raid/xiaotaw/ChemDiv"
+fn_list = ["DC01_350000.sdf", "DC02_350000.sdf", "DC03_222773.sdf", "DC_saltdata_not-available_124145.sdf", "IC_non-excl_82693.sdf", "NC_340320.sdf"]
 
-
+for fn in fn_list:
+  gzsup = Chem.SDMolSupplier(ChemDiv_dir + "/" + fn)
+  molecules = [x for x in gzsup if x is not None]
+  apfp_file = open(ChemDiv_dir + "/" + fn.replace("sdf", "apfp"), "w")
+  for mol in molecules:
+    id_ = mol.GetProp("IDNUMBER")
+    apfps = GetAtomPairFingerprint(Chem.RemoveHs(mol)).GetNonzeroElements()
+    apfp_file.write("%s\t{%s}\n" % (id_, dict_2_str(apfps)))
+  apfp_file.close()
 
 
 
