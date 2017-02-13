@@ -11,6 +11,7 @@ import getpass
 import numpy as np
 from scipy import sparse
 from collections import defaultdict
+from matplotlib import pyplot as plt
 from sklearn.externals import joblib
 from sklearn.ensemble import RandomForestClassifier
 
@@ -83,6 +84,7 @@ def analyse(target):
 
 target = target_list[int(sys.argv[1])]
 virtual_screening(target)
+analyse(target)
 
 
 """
