@@ -28,9 +28,9 @@ target_list = ["CHEMBL279", "CHEMBL203", # Protein Kinases
               ] 
 
 
-target_list = ["CHEMBL203", "CHEMBL204", "CHEMBL205", "CHEMBL244", "CHEMBL279", "CHEMBL340", 
-                 "CHEMBL4005", "CHEMBL4805", "CHEMBL4822", 
-                ] 
+target_list = ["CHEMBL206", "CHEMBL217", "CHEMBL235", "CHEMBL240", 
+               "CHEMBL253", "CHEMBL4296",  
+              ] 
 
 def virtual_screening(target):
   # input dataset
