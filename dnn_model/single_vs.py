@@ -10,13 +10,10 @@ from __future__ import print_function
 
 import os
 import sys
-import math
-import glob
 import time
 import numpy as np
 import datetime
 import tensorflow as tf
-from scipy import sparse
 from matplotlib import pyplot as plt
 
 import dnn_model
@@ -35,7 +32,7 @@ def virtual_screening_single(target, g_step, part_num, gpu_num):
   # batch size
   batch_size = 128
   # input vec_len
-  input_vec_len = d.target_apfp_picked.shape[0]
+  input_vec_len = d.num_features
   # keep prob
   keep_prob = 0.8
   # weight decay
