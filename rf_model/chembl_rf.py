@@ -85,8 +85,8 @@ def train_pred(target, train_pos_multiply=0):
 
 
 
-target_list = ["CHEMBL203", "CHEMBL205", "CHEMBL279", "CHEMBL340", 
-               "CHEMBL4005", "CHEMBL4805",  
+target_list = ["CHEMBL206", "CHEMBL217", "CHEMBL235", "CHEMBL240", 
+               "CHEMBL253", "CHEMBL4296",  
               ] 
 
 
