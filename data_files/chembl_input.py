@@ -283,16 +283,18 @@ class DatasetChemDiv(DatasetBase):
         id_, fps_str = line.split("\t")
         id_ = id_.strip()
         fps_str = fps_str.strip()
-        self.chemdiv_id.append(id_)
-        self.chemdiv_apfp[id_] = fps_str                
+        self.chemdiv_ids.append(id_)
+        self.chemdiv_apfps[id_] = fps_str                
       f.close()
     # batch related
     self.begin = 0
     self.end = 0
-    self.size = len(chemdiv_ids)
+    self.size = len(self.chemdiv_ids)
   
   def generate_batch(self, batch_size):
     self.begin = self.end
+    if self.begin >= self.size:
+      raise StopIteration()
     self.end += batch_size
     if self.end > self.size:
       self.end = self.size
