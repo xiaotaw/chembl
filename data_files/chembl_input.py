@@ -269,6 +269,40 @@ class DatasetVS(DatasetBase):
     self.features_dense = self.features.toarray()
 
 
+class DatasetChemDiv(DatasetBase):
+  def __init__(self, target):
+    DatasetBase.__init__(self, target)
+    # read ids and apfps
+    ChemDiv_dir = "/raid/xiaotaw/ChemDiv"
+    fn_list = ["DC01_350000.apfp", "DC02_350000.apfp", "DC03_222773.apfp", "DC_saltdata_not-available_124145.apfp", "IC_non-excl_82693.apfp", "NC_340320.apfp"]
+    self.chemdiv_ids = []
+    self.chemdiv_apfps = {}
+    for fn in fn_list:
+      f = open(ChemDiv_dir + "/" + fn, "r")
+      for line in f:
+        id_, fps_str = line.split("\t")
+        id_ = id_.strip()
+        fps_str = fps_str.strip()
+        self.chemdiv_id.append(id_)
+        self.chemdiv_apfp[id_] = fps_str                
+      f.close()
+    # batch related
+    self.begin = 0
+    self.end = 0
+    self.size = len(chemdiv_ids)
+  
+  def generate_batch(self, batch_size):
+    self.begin = self.end
+    self.end += batch_size
+    if self.end > self.size:
+      self.end = self.size
+    ids = self.chemdiv_ids[self.begin: self.end]
+    apfp_list = [self.chemdiv_apfps[k] for k in ids]
+    features = sparse_features(apfp_list, self.target_columns_dict, self.num_features)[:, :-1]
+    return ids, features
+
+
+
 def compute_performance(label, prediction):
   """sensitivity(SEN), specificity(SPE), accuracy(ACC), matthews correlation coefficient(MCC) 
   """
