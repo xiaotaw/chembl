@@ -64,12 +64,16 @@ def virtual_screening_chemdiv(target, g_step, gpu_num=0):
     with tf.Session(config=config) as sess:
       # Restores variables from checkpoint
       saver.restore(sess, ckpt_path + "-%d" % g_step)
-      while True:
-        ids, features = d.generate_batch(batch_size)
-        sm = sess.run(softmax, feed_dict = {input_placeholder: features.toarray()})
-        for id_, sm_v in zip(ids, sm[:, 1]):
-          predfile.write("%s\t%f\n" % (id_, sm_v))
+      try:     
+        while True:
+          ids, features = d.generate_batch(batch_size)
+          sm = sess.run(softmax, feed_dict = {input_placeholder: features.toarray()})
+          for id_, sm_v in zip(ids, sm[:, 1]):
+            predfile.write("%s\t%f\n" % (id_, sm_v))
+      except StopIteration:
+        pass
 
+  predfile.close()
   print("duration: %.3f" % (time.time() - t_0))
 
 
