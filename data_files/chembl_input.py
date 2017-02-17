@@ -85,6 +85,18 @@ class DatasetBase(object):
     for i, apfp in enumerate(self.target_apfp_picked):
       self.target_columns_dict[apfp] = i
 
+  def batch_generator_base(self, size, batch_size):
+    begin = 0
+    end = 0
+    while True:
+      begin = end
+      if begin >= size:
+        raise StopIteration()
+      end += batch_size 
+      if end > size:
+        end = size
+      yield begin, end
+    
 
 class DatasetTarget(DatasetBase):
   def __init__(self, target, year_split=2014):
@@ -133,6 +145,13 @@ class DatasetCNS(DatasetTarget):
     self.cns_features_train = self.cns_features[~m]
     self.cns_mask_train = self.cns_mask[~m]
 
+  def batch_generator_cns(self, batch_size):
+    for begin, end in self.batch_generator_base(self.cns_features.shape[0], batch_size):
+      ids = self.chembl_id[begin: end]
+      features = self.cns_features[begin: end].toarray()
+      mask = self.cns_mask[begin: end].values
+      yield ids, features, mask
+
 
 class DatasetPNS(DatasetBase):
   def __init__(self, target):
@@ -152,6 +171,13 @@ class DatasetPNS(DatasetBase):
     self.pns_mask = pd.Series.from_csv(mask_dir + "/%s_pns.mask" % target, header=None, sep="\t")
     # features
     self.pns_features = sparse_features([self.pns_apfp[k] for k in self.pns_id], self.target_columns_dict, self.num_features)[:, :-1]
+
+  def batch_generator_pns(self, batch_size):
+    for begin, end in self.batch_generator_base(self.pns_features.shape[0], batch_size):
+      ids = self.pns_id[begin: end]
+      features = self.pns_features[begin: end].toarray()
+      mask = self.pns_mask[begin: end].values
+      yield ids, features, mask
 
 
 class Dataset(DatasetCNS, DatasetPNS):
@@ -234,17 +260,6 @@ class Dataset(DatasetCNS, DatasetPNS):
     perm = self.train_perm[self.train_begin: self.train_end]
     return self.train_features[perm].toarray().astype(np.float32), self.train_labels_one_hot[perm]
 
-  def reset_begin_end_cns(self):
-    self.cns_begin = 0
-    self.cns_end = 0
-
-  def generate_cns_batch_once(self, batch_size):
-    self.cns_begin = self.cns_end
-    self.cns_end += batch_size
-    if self.cns_end > self.cns_size:
-      self.cns_end = self.cns_size
-    perm = self.cns_perm[self.cns_begin: self.cns_end]
-    return self.cns_features[perm].toarray().astype(np.float32), dense_to_one_hot(self.target_cns_mask[perm].astype(int))
 
 
 # dataset for virtual screening(vs)
