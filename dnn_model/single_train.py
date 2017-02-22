@@ -27,7 +27,7 @@ def train(target, train_from = 0):
   # batch size
   batch_size = 128
   # learning rate 
-  step_per_epoch = int(d.train_size / batch_size)
+  step_per_epoch = int(d.train_size / batch_size) # approximately equal to 7456
   start_learning_rate = 0.05
   decay_step = step_per_epoch * 10
   decay_rate = 0.9

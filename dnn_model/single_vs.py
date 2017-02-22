@@ -182,8 +182,26 @@ def analyse(target, g_step):
 
   test_pred_file = "pred_files/%s/test_%s_128_0.800_4.000e-03_%d.pred" % (target, target, g_step)
   bb = np.genfromtxt(test_pred_file, delimiter="\t", usecols=[1,2])
-
   b = bb[:, 0][bb[:, 1].astype(bool)]
+
+  """
+  train_pred_file = "pred_files/%s/train_%s_128_0.800_4.000e-03_%d.pred" % (target, target, g_step)
+  cc = np.genfromtxt(train_pred_file, delimiter="\t", usecols=[1,2])
+  c = cc[:, 0][cc[:, 1].astype(bool)]
+
+bhist = plt.hist(b, bins=100, range=(0, 1), cumulative=False, histtype="stepfilled", )
+plt.hist(b, bins=100, range=(0, 1), cumulative=True, histtype="step", )
+plt.show()
+
+
+chist = plt.hist(c, bins=100, cumulative=False, histtype="stepfilled", )
+plt.hist(c, bins=100, cumulative=True, histtype="step", )
+plt.show()
+
+  histtype="bar", "barstacked", "step", "stepfilled",
+
+
+  """
 
   x = []
   y = []
