@@ -318,7 +318,12 @@ class DatasetChemDiv(DatasetBase):
     features = sparse_features(apfp_list, self.target_columns_dict, self.num_features)[:, :-1]
     return ids, features
 
-
+  def batch_generator_chemdiv(self, batch_size):
+    for begin, end in self.batch_generator_base(self.size, batch_size):
+      ids = self.chemdiv_ids[begin: end]
+      apfp_list = [self.chemdiv_apfps[k] for k in ids]
+      features = sparse_features(apfp_list, self.target_columns_dict, self.num_features)[:, :-1].toarray()
+      yield ids, features
 
 def compute_performance(label, prediction):
   """sensitivity(SEN), specificity(SPE), accuracy(ACC), matthews correlation coefficient(MCC) 
