@@ -64,7 +64,7 @@ def evaluate(target, g_step_list=None, gpu_num=0,
     saver = tf.train.Saver(tf.trainable_variables())
     # create session.
     config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
-    config.gpu_options.per_process_gpu_memory_fraction = 0.3
+    config.gpu_options.per_process_gpu_memory_fraction = 0.2
     sess = tf.Session(config=config)
 
 
@@ -168,18 +168,24 @@ if __name__ == "__main__":
                "CHEMBL204", "CHEMBL244", "CHEMBL4822", "CHEMBL340", "CHEMBL205", "CHEMBL4005" # Others
               ] 
 
-  target_list = ["CHEMBL203", "CHEMBL204", "CHEMBL205", "CHEMBL244", "CHEMBL279", "CHEMBL340", 
-                 "CHEMBL4005", "CHEMBL4805", "CHEMBL4822", 
+  target_list = ["CHEMBL203", "CHEMBL204", "CHEMBL205",
+                 "CHEMBL206", "CHEMBL217", "CHEMBL235", "CHEMBL240",
+                 "CHEMBL244", "CHEMBL253", "CHEMBL279", "CHEMBL340", 
+                 "CHEMBL4005", "CHEMBL4296", "CHEMBL4805", "CHEMBL4822", 
                 ] 
 
-  g_list = [2161371, 2236500, 2235600, 2161951, 2161661, 2246400, 
-            2235900, 2168041, 1936221
+  g_list = [2161371, 2236500, 2235600, 
+            2091321, 2161661, 2086841, 2020411,
+            2161951, 2012041, 2161661, 2246400, 
+            2235900, 2238000, 2168041,  1936221
            ]
 
-  evaluate(target="CHEMBL203", g_step_list=[2161371])
+  i = int(sys.argv[1])
+  target = target_list[i]
+  g_step = g_list[i]
+  evaluate(target=target, g_step_list=[g_step], gpu_num=i % 4)
 
-  #for target, g_step in zip(target_list, g_list):
-  #  test(target, g_step)
+  #test(target, g_step, )
 
 
 
