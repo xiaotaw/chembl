@@ -20,12 +20,12 @@ import dnn_model
 import chembl_input as ci
 
 
-def train(target, train_from = 0):
+def train(target, train_from=0, gpu_num=0, 
+          keep_prob=0.8, wd=0.004, batch_size=128):
   """"""
   # dataset
   d = ci.Dataset(target, train_pos_multiply=2)
-  # batch size
-  batch_size = 128
+  d.test_features_dense = d.test_features.toarray()
   # learning rate 
   step_per_epoch = int(d.train_size / batch_size) # approximately equal to 7456
   start_learning_rate = 0.05
@@ -34,11 +34,7 @@ def train(target, train_from = 0):
   # max train steps
   max_step = 300 * step_per_epoch
   # input vec_len
-  input_vec_len = d.train_features.shape[1]
-  # keep prob
-  keep_prob = 0.8
-  # weight decay
-  wd = 0.004
+  input_vec_len = d.num_features
   # checkpoint file
   ckpt_dir = "ckpt_files/%s" % target
   ckpt_path = os.path.join(ckpt_dir, '%d_%4.3f_%4.3e.ckpt' % (batch_size, keep_prob, wd))
@@ -54,7 +50,7 @@ def train(target, train_from = 0):
 
 
   # build dnn model and train
-  with tf.Graph().as_default(), tf.device('/gpu:0'):
+  with tf.Graph().as_default(), tf.device('/gpu: %d' % gpu_num):
     # placeholders
     input_placeholder = tf.placeholder(tf.float32, shape = (None, input_vec_len))
     label_placeholder = tf.placeholder(tf.float32, shape = (None, 2))
@@ -76,7 +72,7 @@ def train(target, train_from = 0):
     saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=None)
     # start running operations on the Graph.
     config=tf.ConfigProto(allow_soft_placement=True)
-    config.gpu_options.per_process_gpu_memory_fraction = 0.6
+    config.gpu_options.per_process_gpu_memory_fraction = 0.2
     sess = tf.Session(config=config)
     # initialize all variables at first.
     sess.run(tf.initialize_all_variables())
@@ -98,9 +94,7 @@ def train(target, train_from = 0):
       perm = d.generate_perm_for_train_batch(batch_size)
       compds_batch = d.train_features[perm].toarray()
       labels_batch_one_hot = d.train_labels_one_hot[perm]
-      labels_batch_dense = d.train_labels[perm]
       t1 = time.time()
-
       # train once
       _ = sess.run([train_op],feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch_one_hot})
       t2 = time.time()
@@ -109,7 +103,7 @@ def train(target, train_from = 0):
       if step % step_per_epoch == 0 or (step + 1) == max_step:
         g_step, wd_ls, x_ls, lr, pred = sess.run([global_step, wd_loss, x_entropy, learning_rate, tf.argmax(softmax, 1)],
           feed_dict = {input_placeholder: compds_batch, label_placeholder: labels_batch_one_hot})
-        tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(labels_batch_dense, pred)
+        tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(d.train_labels[perm], pred)
         t3 = float(time.time())    
         logfile.write(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, t1-t0, t2-t1, t3-t2, target) + "\n")
         print(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, t1-t0, t2-t1, t3-t2, target))      
@@ -120,12 +114,9 @@ def train(target, train_from = 0):
 
       # compute performance for the test data
       if step % (10 * step_per_epoch) == 0 or (step + 1) == max_step:
-        test_compds_batch = d.test_features_dense
-        test_labels_batch_one_hot = d.test_labels_one_hot
-        test_labels_batch_dense = d.test_labels
         x_ls, pred = sess.run([x_entropy, tf.argmax(softmax, 1)],
-          feed_dict = {input_placeholder: test_compds_batch, label_placeholder: test_labels_batch_one_hot})
-        tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(test_labels_batch_dense, pred)
+          feed_dict = {input_placeholder: d.test_features_dense, label_placeholder: d.test_labels_one_hot})
+        tp, tn, fp, fn, sen, spe, acc, mcc = ci.compute_performance(d.test_labels, pred)
         logfile.write(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, 0, target) + "\n")
         print(format_str % (step, g_step, wd_ls, x_ls, lr, tp, fn, tn, fp, sen, spe, acc, mcc, 0, 0, 0, target)) 
 
@@ -142,6 +133,6 @@ if __name__ == "__main__":
 
 
   #for target in target_list:
-  target = "CHEMBL4805"
+  target = sys.argv[1]
   train(target, train_from=0)
 
