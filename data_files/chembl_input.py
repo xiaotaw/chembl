@@ -217,16 +217,12 @@ class Dataset(DatasetCNS, DatasetPNS):
       self.test_labels_one_hot = dense_to_one_hot(self.test_labels) 
     # batch related
     self.train_size = self.train_features.shape[0] # (954049, 9412)
-    self.train_perm = np.array(range(self.train_size))
+    self.train_perm = np.arange(self.train_size)
     if is_shuffle_train:
       np.random.shuffle(self.train_perm)
     self.train_begin = 0
     self.train_end = 0
 
-    self.cns_size = self.cns_features.shape[0] # (878721, 9412)
-    self.cns_perm = np.arange(self.cns_size)
-    self.cns_begin = 0
-    self.cns_end = 0
 
   def generate_perm_for_train_batch(self, batch_size):
     """Create the permutation for a batch of train samples
