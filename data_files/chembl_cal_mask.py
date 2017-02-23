@@ -279,4 +279,4 @@ target_list = [
 
 #for target in target_list:
 #  cal_mask(target)
-cal_mask("CHEMBL205")
+cal_mask(sys.argv[1])
