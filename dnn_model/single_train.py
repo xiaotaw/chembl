@@ -20,11 +20,11 @@ import dnn_model
 import chembl_input as ci
 
 
-def train(target, train_from=0, gpu_num=0, 
-          keep_prob=0.8, wd=0.004, batch_size=128):
+def train(target, gpu_num=0, tpm=0, 
+          train_from=0, keep_prob=0.8, wd=0.004, batch_size=128):
   """"""
   # dataset
-  d = ci.Dataset(target, train_pos_multiply=2)
+  d = ci.Dataset(target, train_pos_multiply=tpm)
   d.test_features_dense = d.test_features.toarray()
   # learning rate 
   step_per_epoch = int(d.train_size / batch_size) # approximately equal to 7456
@@ -72,7 +72,7 @@ def train(target, train_from=0, gpu_num=0,
     saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=None)
     # start running operations on the Graph.
     config=tf.ConfigProto(allow_soft_placement=True)
-    config.gpu_options.per_process_gpu_memory_fraction = 0.2
+    config.gpu_options.per_process_gpu_memory_fraction = 0.3
     sess = tf.Session(config=config)
     # initialize all variables at first.
     sess.run(tf.initialize_all_variables())
@@ -133,6 +133,5 @@ if __name__ == "__main__":
 
 
   #for target in target_list:
-  target = sys.argv[1]
-  train(target, train_from=0)
+  train(target=sys.argv[1], gpu_num=int(sys.argv[2])) 
 
