@@ -5,9 +5,9 @@ Time Created: Aug 2016
 
 Time Updated: Dec 2016
 
-Addr: Shenzhen
+Addr: Shenzhen, China
 
-Description: We attempt to use machine learning to explore ChEMBL's Inhibitors
+Description: We attempt to explore ChEMBL's Inhibitors by deep neural network
 
 Website: https://xiaotaw.github.io/chembl/
 
