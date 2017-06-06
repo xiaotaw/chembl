@@ -180,11 +180,11 @@ if __name__ == "__main__":
             2235900, 2238000, 2168041,  1936221
            ]
 
-  i = int(sys.argv[1])
-  target = target_list[i]
-  g_step = g_list[i]
-  evaluate(target=target, g_step_list=[g_step], gpu_num=i % 4)
-
+  #i = int(sys.argv[1])
+  #target = target_list[i]
+  #g_step = g_list[i]
+  #evaluate(target=target, g_step_list=[g_step], gpu_num=i % 4)
+  evaluate(target="CHEMBL4722", g_step_list=[2242500], gpu_num=0)
   #test(target, g_step, )
 
 

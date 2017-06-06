@@ -85,7 +85,7 @@ def virtual_screening_chemdiv(target, g_step, gpu_num=0):
   print("duration: %.3f" % (time.time() - t_0))
 
 
-def analyse_sort_chemdiv(target):
+def analyse_sort_chemdiv(target, g_step):
   pred_file = "pred_files/%s/vs_chemdiv_%s_128_0.800_4.000e-03_%d.pred" % (target, target, g_step)
   pred = pd.read_csv(pred_file, sep="\t", names=("id", "pred"))
   pred.sort_values(by="pred", ascending=False, inplace=True)
@@ -106,11 +106,11 @@ if __name__ == "__main__":
             2235900, 2238000, 2168041,  1936221,
            ]
 
-  i = int(sys.argv[1])
-  target = target_list[i]
-  g_step = g_list[i]
-  #virtual_screening_chemdiv(target=target, g_step=g_step, gpu_num=i % 4)
-  analyse_sort_chemdiv(target)
+  #i = int(sys.argv[1])
+  #target = target_list[i]
+  #g_step = g_list[i]
+  virtual_screening_chemdiv(target="CHEMBL4005", g_step=2235900, gpu_num=1)
+  analyse_sort_chemdiv("CHEMBL4005", g_step=2235900)
 
 
 
