@@ -133,5 +133,5 @@ if __name__ == "__main__":
 
 
   #for target in target_list:
-  train(target=sys.argv[1], gpu_num=int(sys.argv[2])) 
+  train(target="CHEMBL4722", gpu_num=0, tpm=1) 
 

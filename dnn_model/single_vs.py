@@ -88,10 +88,8 @@ def virtual_screening_single(target, g_step, part_num, gpu_num):
   print("duration: %.3f" % (time.time() - t_0))
 
 
-
+"""
 def predict(target, g_step_list=None):
-  """ evaluate the model 
-  """
   # dataset
   d = ci.Dataset(target)
   # batch size
@@ -173,7 +171,7 @@ def predict(target, g_step_list=None):
         train_pred_file.writelines("%s\t%f\t%f\n" % (id_, sm_v, l_v))
 
       train_pred_file.close()
-
+"""
 
 def analyse(target, g_step):
   vs_pred_file = "pred_files/%s/vs_pubchem_%s_128_0.800_4.000e-03_%d.pred" % (target, target, g_step)
@@ -233,15 +231,16 @@ if __name__ == "__main__":
               ] 
 
   # the target
-  target = "CHEMBL205"
+  target = "CHEMBL4722"
 
-  # part_num range from 0 to 12(included)
+  #part_num range from 0 to 12(included)
   #for i in range(9, 13):
-  #  virtual_screening_single(target, 2161081, i, 3)
+  #  virtual_screening_single(target, 2260800, i, 3)
 
-  predict(target, g_step_list=[2161081])
+  #predict(target, g_step_list=[2252100])
 
-  analyse(target, g_step=2161081)
+
+  analyse(target, g_step=2242500)
 
 
 
