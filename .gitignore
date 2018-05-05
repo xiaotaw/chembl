@@ -103,8 +103,7 @@ log_files/
 pred_files/
 *.pred
 
-# data files
-fp_files/
+# data file
 structure_files/
 txt_files/
 csv_files/
